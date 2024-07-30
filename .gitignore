@@ -1,0 +1,7 @@
+/target/
+/build/
+/out/
+/bin/
+
+/.idea/
+/.vscode/

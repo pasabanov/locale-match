@@ -1,0 +1,72 @@
+[package]
+name = "RustProjectTemplate"
+version = "0.1.0"
+edition = "2021"
+
+[profile.dev]
+# Compilation
+codegen-units = 256
+incremental = true
+# Behavior
+overflow-checks = true
+# Optimization
+opt-level = 0
+lto = false
+# Symbols
+debug = true
+strip = "none"
+
+[profile.fastcompile]
+inherits = "dev"
+# Compilation
+codegen-units = 8192
+incremental = true
+# Behavior
+overflow-checks = false
+# Optimization
+opt-level = 0
+lto = false
+# Symbols
+debug = false
+strip = "none"
+
+[profile.release]
+# Compilation
+codegen-units = 1
+incremental = false
+# Behavior
+overflow-checks = false
+# Optimization
+opt-level = 3
+lto = true
+# Symbols
+debug = false
+strip = "symbols"
+
+[profile.relwithdebinfo]
+inherits = "release"
+# Compilation
+codegen-units = 1
+incremental = false
+# Behavior
+overflow-checks = false
+# Optimization
+opt-level = 2
+lto = true
+# Symbols
+debug = true
+strip = "none"
+
+[profile.minsize]
+inherits = "release"
+# Compilation
+codegen-units = 1
+incremental = false
+# Behavior
+overflow-checks = false
+# Optimization
+opt-level = "z"
+lto = true
+# Symbols
+debug = false
+strip = "symbols"

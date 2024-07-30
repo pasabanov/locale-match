@@ -9,6 +9,7 @@ codegen-units = 256
 incremental = true
 # Behavior
 overflow-checks = true
+panic = "unwind"
 # Optimization
 opt-level = 0
 lto = false
@@ -23,6 +24,7 @@ codegen-units = 8192
 incremental = true
 # Behavior
 overflow-checks = false
+panic = "abort"
 # Optimization
 opt-level = 0
 lto = false
@@ -36,6 +38,7 @@ codegen-units = 1
 incremental = false
 # Behavior
 overflow-checks = false
+panic = "abort"
 # Optimization
 opt-level = 3
 lto = true
@@ -50,6 +53,7 @@ codegen-units = 1
 incremental = false
 # Behavior
 overflow-checks = false
+panic = "unwind"
 # Optimization
 opt-level = 2
 lto = true
@@ -64,6 +68,7 @@ codegen-units = 1
 incremental = false
 # Behavior
 overflow-checks = false
+panic = "abort"
 # Optimization
 opt-level = "z"
 lto = true

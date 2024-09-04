@@ -1,7 +1,25 @@
 [package]
 name = "RustProjectTemplate"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2021"
+publish = false
+
+exclude = [
+	"/.github/",
+	"/.gitlab/",
+	"/.idea/",
+	"/.vscode/",
+	"/doc/",
+	"/docs/",
+	"/example/",
+	"/examples/",
+	"/test/",
+	"/tests/",
+	"/.editorconfig",
+	"/.gitignore",
+	"/.rustfmt.toml",
+	"/rustfmt.toml"
+]
 
 [profile.dev]
 # Compilation

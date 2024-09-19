@@ -4,9 +4,9 @@
 **PR Type**  
 - [ ] Bug fix
 - [ ] Feature
-- [ ] Chore (refactoring, formatting, cleanup, etc.)
-- [ ] Documentation content changes
+- [ ] Documentation
 - [ ] Localization / Internationalization
+- [ ] Chore (refactoring, formatting, cleanup, etc.)
 - [ ] Other (please describe): _______
 
 **Describe changes**  

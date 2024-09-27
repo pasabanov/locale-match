@@ -218,7 +218,9 @@ mod tests {
 
 		// Malformed
 		assert_best_match(&[" en"], &["en"], None);
+		assert_best_match(&["en\n"], &["en"], None);
 		assert_best_match(&["?ru"], &["ru"], None);
+		assert_best_match(&["ru!"], &["ru"], None);
 		assert_best_match(&["ruRU"], &["ru"], None);
 
 		// Repeating

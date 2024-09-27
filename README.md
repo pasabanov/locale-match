@@ -1,5 +1,7 @@
 # locale-match
 
+[![crates.io](https://img.shields.io/crates/v/locale-match?style=for-the-badge)](https://crates.io/crates/locale-match)
+
 A small library for matching a locale from a list of available locales to the user's preferred locales.
 
 ## Examples
@@ -88,3 +90,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ## Copyright
 
 2024 Petr Alexandrovich Sabanov
+
+## Metrics
+
+![repo size](https://img.shields.io/github/repo-size/pasabanov/locale-match?color=6e54bb)
+![crate size](https://img.shields.io/crates/size/locale-match?label=crate%20size&color=orange)

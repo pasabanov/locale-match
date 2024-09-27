@@ -1,6 +1,8 @@
 # locale-match
 
-[![crates.io](https://img.shields.io/crates/v/locale-match?style=for-the-badge)](https://crates.io/crates/locale-match)
+[![crates.io](https://img.shields.io/crates/v/locale-match?style=for-the-badge&logo=rust)](https://crates.io/crates/locale-match)
+[![crates.io](https://img.shields.io/docsrs/locale-match/latest?style=for-the-badge&logo=docs.rs
+)](https://docs.rs/locale-match/latest/locale_match)
 
 A small library for matching a locale from a list of available locales to the user's preferred locales.
 

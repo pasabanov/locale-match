@@ -136,6 +136,8 @@ impl<'a> PosixLocale<'a> {
 	/// Parse a POSIX locale string into a `PosixLocale`.
 	///
 	/// The `locale` string should be in the form `language[_territory][.codeset][@modifier]`.
+	///
+	/// The function does not perform any validation on the input string.
 	fn parse(locale: &'a str) -> Self {
 		let codeset_end = locale.find(Self::MODIFIER_DELIMITER).unwrap_or(locale.len());
 		let territory_end = locale.find(Self::CODESET_DELIMITER).unwrap_or(codeset_end);

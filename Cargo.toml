@@ -4,7 +4,7 @@ version = "0.0.1"
 authors = ["Petr Alexandrovich Sabanov pasabanov@murena.io"]
 edition = "2021"
 description = "A small library for matching a locale from a list of available locales to the user preferred locales."
-license = "AGPL-3.0-or-later"
+license = "LGPL-3.0-or-later"
 publish = false
 
 exclude = [

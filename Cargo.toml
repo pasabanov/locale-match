@@ -26,7 +26,12 @@ exclude = [
 ]
 
 [dependencies]
-language-tags = "0.3.2"
+language-tags = { version = "0.3.2", optional = true }
+
+[features]
+bcp47 = ["language-tags"]
+posix = []
+default = ["bcp47", "posix"]
 
 [profile.dev]
 # Compilation

@@ -1,7 +1,9 @@
 [package]
-name = "RustProjectTemplate"
+name = "locale-match"
 version = "0.0.1"
+authors = ["Petr Alexandrovich Sabanov pasabanov@murena.io"]
 edition = "2021"
+description = "A small library for matching a locale from a list of available locales to the user preferred locales."
 license = "AGPL-3.0-or-later"
 publish = false
 
@@ -22,6 +24,9 @@ exclude = [
 	"/.rustfmt.toml",
 	"/rustfmt.toml"
 ]
+
+[dependencies]
+language-tags = "0.3.2"
 
 [profile.dev]
 # Compilation

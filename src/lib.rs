@@ -1,4 +1,4 @@
-//! <brief description>
+//! locale-match is a small library for matching locales.
 //! Copyright (C) © 2024  Petr Alexandrovich Sabanov
 //!
 //! This program is free software: you can redistribute it and/or modify
@@ -14,6 +14,4 @@
 //! You should have received a copy of the GNU Affero General Public License
 //! along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-fn main() {
-	
-}
+pub mod bcp47;

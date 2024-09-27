@@ -1,8 +1,6 @@
-# Rust Project Template
+# locale-match
 
-This is a template for Rust projects which is convenient to me.
-
-I use AGPL 3.0 or later by default.
+A small library for matching a locale from a list of available locales to the user preferred locales.
 
 ## License
 

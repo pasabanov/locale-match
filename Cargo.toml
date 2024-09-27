@@ -1,11 +1,11 @@
 [package]
 name = "locale-match"
-version = "0.0.1"
+version = "0.1.0"
 authors = ["Petr Alexandrovich Sabanov pasabanov@murena.io"]
 edition = "2021"
-description = "A small library for matching a locale from a list of available locales to the user preferred locales."
+description = "A small library for matching a locale from a list of available locales to the user's preferred locales."
+repository = "https://github.com/pasabanov/locale-match"
 license = "LGPL-3.0-or-later"
-publish = false
 
 exclude = [
 	"/.forgejo/",

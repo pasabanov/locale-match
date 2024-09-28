@@ -88,9 +88,9 @@ use std::ops::{Range, RangeFrom};
 /// // Empty territory in "fr.UTF-8" matches any territory, e.g. "CA"
 /// assert_eq!(best_match, Some("fr_CA.UTF-8"));
 /// ```
-pub fn best_matching_locale<'a, T1, T2>(available_locales: impl IntoIterator<Item = T1>, user_locales: impl IntoIterator<Item = T2>) -> Option<T1>
+pub fn best_matching_locale<T1, T2>(available_locales: impl IntoIterator<Item = T1>, user_locales: impl IntoIterator<Item = T2>) -> Option<T1>
 where
-	T1: AsRef<str> + 'a,
+	T1: AsRef<str>,
 	T2: AsRef<str>
 {
 	let available_parsed_locales = available_locales.into_iter()

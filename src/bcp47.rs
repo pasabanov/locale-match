@@ -87,9 +87,9 @@ use language_tags::LanguageTag;
 /// // Empty extended language subtag in "zh-Hans" matches any extended language, e.g. "cmn"
 /// assert_eq!(best_match, Some("zh-cmn-Hans"));
 /// ```
-pub fn best_matching_locale<'a, T1, T2>(available_locales: impl IntoIterator<Item = T1>, user_locales: impl IntoIterator<Item = T2>) -> Option<T1>
+pub fn best_matching_locale<T1, T2>(available_locales: impl IntoIterator<Item = T1>, user_locales: impl IntoIterator<Item = T2>) -> Option<T1>
 where
-	T1: AsRef<str> + 'a,
+	T1: AsRef<str>,
 	T2: AsRef<str>
 {
 	let available_tags = available_locales.into_iter()

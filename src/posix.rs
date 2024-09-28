@@ -14,8 +14,6 @@
 //! You should have received a copy of the GNU Lesser General Public License
 //! along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::ops::{Range, RangeFrom};
-
 /// Finds the best matching locale from a list of available locales based on a list of user locales.
 /// The function expects locales to be valid POSIX locales, but does not validate them.
 /// The function expects locales to be encoded with ASCII.
@@ -126,10 +124,9 @@ where
 /// A POSIX locale as described in [The Open Group Base Specifications Issue 8 - 8. Environment Variables](https://pubs.opengroup.org/onlinepubs/9799919799/basedefs/V1_chap08.html).
 struct PosixLocale<T: AsRef<str>> {
 	locale: T,
-	language: Range<usize>,
-	territory: Option<Range<usize>>,
-	codeset: Option<Range<usize>>,
-	modifier: Option<RangeFrom<usize>>,
+	language_end: usize,
+	territory_end: usize,
+	codeset_end: usize,
 }
 
 impl<T: AsRef<str>> PosixLocale<T> {
@@ -147,28 +144,25 @@ impl<T: AsRef<str>> PosixLocale<T> {
 		let codeset_end = locale_ref.find(Self::MODIFIER_DELIMITER).unwrap_or(locale_ref.len());
 		let territory_end = locale_ref.find(Self::CODESET_DELIMITER).unwrap_or(codeset_end);
 		let language_end = locale_ref.find(Self::TERRITORY_DELIMITER).unwrap_or(territory_end);
-		Self {
-			locale,
-			language: 0..language_end,
-			territory: Some(language_end + 1..territory_end),
-			codeset: Some(territory_end + 1..codeset_end),
-			modifier: Some(codeset_end + 1..)
-		}
+		Self { locale, language_end, territory_end, codeset_end }
 	}
 
 	fn language(&self) -> &str {
-		&self.locale.as_ref()[self.language.clone()]
+		&self.locale.as_ref()[0..self.language_end]
 	}
 
 	fn territory(&self) -> Option<&str> {
-		self.locale.as_ref().get(self.territory.clone().unwrap())
+		self.locale.as_ref().get(self.language_end + 1..self.territory_end)
 	}
+
 	fn codeset(&self) -> Option<&str> {
-		self.locale.as_ref().get(self.codeset.clone().unwrap())
+		self.locale.as_ref().get(self.territory_end + 1..self.codeset_end)
 	}
+
 	fn modifier(&self) -> Option<&str> {
-		self.locale.as_ref().get(self.modifier.clone().unwrap())
+		self.locale.as_ref().get(self.codeset_end + 1..)
 	}
+
 	fn into_inner(self) -> T {
 		self.locale
 	}
@@ -181,98 +175,124 @@ mod tests {
 	#[test]
 	fn test_best_matching_locale() {
 
-		fn assert_best_match(available_locales: &[&str], user_locales: &[&str], expected: Option<&str>) {
-			assert_eq!(best_matching_locale(available_locales, user_locales), expected.as_ref());
+		fn case<T1, T2>(available_locales: impl IntoIterator<Item = T1>, user_locales: impl IntoIterator<Item = T2>, expected: Option<T1>)
+		where
+			T1: AsRef<str> + PartialEq + std::fmt::Debug,
+			T2: AsRef<str>
+		{
+			assert_eq!(best_matching_locale(available_locales, user_locales), expected);
 		}
 
 		// One best match
-		assert_best_match(&["en_US", "ru_RU"], &["ru", "en"], Some("ru_RU"));
-		assert_best_match(&["en_US", "ru_RU"], &["en", "ru"], Some("en_US"));
-		assert_best_match(&["en_US", "en_GB", "ru_UA", "fr_FR", "it"], &["ru_RU", "ru", "en_US", "en"], Some("ru_UA"));
-		assert_best_match(&["ru_RU", "sq_AL", "eu_ES"], &["en_US", "en", "sq_XK", "sq"], Some("sq_AL"));
-		assert_best_match(&["lv_LV", "ru_RU", "lt_LT", "mn_MN", "ku_TR"], &["fr", "fr_FR", "ml", "si", "id", "ku_IQ"], Some("ku_TR"));
-		assert_best_match(&["st_LS", "sn_ZW", "en_US"], &["zu_ZA", "st_ZA", "en"], Some("st_LS"));
+		case(["en_US", "ru_RU"], ["ru", "en"], Some("ru_RU"));
+		case(["en_US", "ru_RU"], ["en", "ru"], Some("en_US"));
+		case(["en_US", "en_GB", "ru_UA", "fr_FR", "it"], ["ru_RU", "ru", "en_US", "en"], Some("ru_UA"));
+		case(["ru_RU", "sq_AL", "eu_ES"], ["en_US", "en", "sq_XK", "sq"], Some("sq_AL"));
+		case(["lv_LV", "ru_RU", "lt_LT", "mn_MN", "ku_TR"], ["fr", "fr_FR", "ml", "si", "id", "ku_IQ"], Some("ku_TR"));
+		case(["st_LS", "sn_ZW", "en_US"], ["zu_ZA", "st_ZA", "en"], Some("st_LS"));
 
 		// Multiple best matches
-		assert_best_match(&["en_US", "en_GB", "ru_UA", "fr_FR", "it"], &["en_US", "en", "ru_RU", "ru"], Some("en_US"));
-		assert_best_match(&["en", "pt_BR", "pt_PT", "es"], &["pt", "en"], Some("pt_BR"));
-		assert_best_match(&["ku_TR", "ku_IQ", "ku_IR"], &["ku", "en"], Some("ku_TR"));
-		assert_best_match(&["en_US", "ru_RU", "mn_CN", "sn_ZW", "en", "ru", "mn_MN", "sn"], &["mn", "ru", "en", "sn"], Some("mn_CN"));
+		case(["en_US", "en_GB", "ru_UA", "fr_FR", "it"], ["en_US", "en", "ru_RU", "ru"], Some("en_US"));
+		case(["en", "pt_BR", "pt_PT", "es"], ["pt", "en"], Some("pt_BR"));
+		case(["ku_TR", "ku_IQ", "ku_IR"], ["ku", "en"], Some("ku_TR"));
+		case(["en_US", "ru_RU", "mn_CN", "sn_ZW", "en", "ru", "mn_MN", "sn"], ["mn", "ru", "en", "sn"], Some("mn_CN"));
 
 		// Identical
-		assert_best_match(&["en"], &["en"], Some("en"));
-		assert_best_match(&["en_US"], &["en_US"], Some("en_US"));
-		assert_best_match(&["en_US", "ru_RU"], &["en_US", "ru_RU"], Some("en_US"));
-		assert_best_match(&["st_LS", "sn_ZW", "en_US"], &["st_LS", "sn_ZW", "en_US"], Some("st_LS"));
-		assert_best_match(&["ku_TR", "ku_IQ", "ku_IR"], &["ku_TR", "ku_IQ", "ku_IR"], Some("ku_TR"));
-		assert_best_match(&["lv_LV", "ru_RU", "lt_LT", "mn_MN", "ku_TR"], &["lv_LV", "ru_RU", "lt_LT", "mn_MN", "ku_TR"], Some("lv_LV"));
+		case(["en"], ["en"], Some("en"));
+		case(["en_US"], ["en_US"], Some("en_US"));
+		case(["en_US", "ru_RU"], ["en_US", "ru_RU"], Some("en_US"));
+		case(["st_LS", "sn_ZW", "en_US"], ["st_LS", "sn_ZW", "en_US"], Some("st_LS"));
+		case(["ku_TR", "ku_IQ", "ku_IR"], ["ku_TR", "ku_IQ", "ku_IR"], Some("ku_TR"));
+		case(["lv_LV", "ru_RU", "lt_LT", "mn_MN", "ku_TR"], ["lv_LV", "ru_RU", "lt_LT", "mn_MN", "ku_TR"], Some("lv_LV"));
 
 		// More complicated cases
-		assert_best_match(&["en_US", "ru_RU.UTF-8"], &["ru", "en"], Some("ru_RU.UTF-8"));
-		assert_best_match(&["en_US", "ru.UTF-8", "ru_RU.UTF-8"], &["ru.UTF-8", "en"], Some("ru.UTF-8"));
-		assert_best_match(&["en_US", "ru_RU.UTF-8", "ru.UTF-8"], &["ru.UTF-8", "en"], Some("ru_RU.UTF-8"));
-		assert_best_match(&["en_US", "ru.UTF-8@dict", "ru_UA"], &["ru_UA.UTF-8@dict", "en"], Some("ru_UA"));
-		assert_best_match(&["en_US@dict", "ru_RU"], &["en", "ru"], Some("en_US@dict"));
-		assert_best_match(&["en_US.CP1252", "en_GB.UTF-8", "ru_UA@icase", "fr_FR@euro", "it.UTF-8"], &["ru_RU.KOI8-R", "ru@icase", "en_US.UTF-8", "en.CP1252"], Some("ru_UA@icase"));
-		assert_best_match(&["fr", "fr_FR", "fr_CA.UTF-8"], &["fr.UTF-8"], Some("fr_CA.UTF-8"));
-		assert_best_match(&["en", "pt_BR@dict", "pt_PT@icase", "es"], &["pt.CP1252@euro", "en.UTF-8@dict"], Some("pt_BR@dict"));
-		assert_best_match(&["en_US", "ru_RU", "mn_CN.UTF-8", "sn_ZW", "en", "ru", "mn_MN@dict", "sn"], &["mn.UTF-8@dict", "ru", "en", "sn"], Some("mn_CN.UTF-8"));
+		case(["en_US", "ru_RU.UTF-8"], ["ru", "en"], Some("ru_RU.UTF-8"));
+		case(["en_US", "ru.UTF-8", "ru_RU.UTF-8"], ["ru.UTF-8", "en"], Some("ru.UTF-8"));
+		case(["en_US", "ru_RU.UTF-8", "ru.UTF-8"], ["ru.UTF-8", "en"], Some("ru_RU.UTF-8"));
+		case(["en_US", "ru.UTF-8@dict", "ru_UA"], ["ru_UA.UTF-8@dict", "en"], Some("ru_UA"));
+		case(["en_US@dict", "ru_RU"], ["en", "ru"], Some("en_US@dict"));
+		case(["en_US.CP1252", "en_GB.UTF-8", "ru_UA@icase", "fr_FR@euro", "it.UTF-8"], ["ru_RU.KOI8-R", "ru@icase", "en_US.UTF-8", "en.CP1252"], Some("ru_UA@icase"));
+		case(["fr", "fr_FR", "fr_CA.UTF-8"], ["fr.UTF-8"], Some("fr_CA.UTF-8"));
+		case(["en", "pt_BR@dict", "pt_PT@icase", "es"], ["pt.CP1252@euro", "en.UTF-8@dict"], Some("pt_BR@dict"));
+		case(["en_US", "ru_RU", "mn_CN.UTF-8", "sn_ZW", "en", "ru", "mn_MN@dict", "sn"], ["mn.UTF-8@dict", "ru", "en", "sn"], Some("mn_CN.UTF-8"));
 
 		// One available locale
-		assert_best_match(&["kk"], &["en", "en_US", "fr_FR", "fr", "it", "pt", "ru_RU", "es_ES", "kk_KZ"], Some("kk"));
+		case(["kk"], ["en", "en_US", "fr_FR", "fr", "it", "pt", "ru_RU", "es_ES", "kk_KZ"], Some("kk"));
 
 		// One user locale
-		assert_best_match(&["en", "en_US", "fr_FR", "fr", "it", "pt", "ru_RU", "es_ES", "kk_KZ", "pt"], &["pt_PT"], Some("pt"));
+		case(["en", "en_US", "fr_FR", "fr", "it", "pt", "ru_RU", "es_ES", "kk_KZ", "pt"], ["pt_PT"], Some("pt"));
 
 		// Not found
-		assert_best_match(&["en", "en_US", "fr_FR", "fr", "it", "pt", "es_ES", "kk_KZ", "pt"], &["ru"], None);
-		assert_best_match(&["en", "en_US", "fr_FR", "fr", "pt"], &["id"], None);
-		assert_best_match(&["ru", "be", "uk", "kk"], &["en"], None);
+		case(["en", "en_US", "fr_FR", "fr", "it", "pt", "es_ES", "kk_KZ", "pt"], ["ru"], None);
+		case(["en", "en_US", "fr_FR", "fr", "pt"], ["id"], None);
+		case(["ru", "be", "uk", "kk"], ["en"], None);
 
 		// Empty available locales
-		assert_best_match(&[], &["en", "fr", "it", "pt"], None);
+		case(&[] as &[&str], ["en", "fr", "it", "pt"], None);
 
 		// Empty user locales
-		assert_best_match(&["en", "fr", "it", "pt"], &[], None);
+		case(["en", "fr", "it", "pt"], &[] as &[&str], None);
 
 		// Both lists empty
-		assert_best_match(&[], &[], None);
+		case(&[] as &[&str], &[] as &[&str], None);
 
 		// Malformed
-		assert_best_match(&[" en"], &["en"], None);
-		assert_best_match(&["en\n"], &["en"], None);
-		assert_best_match(&["?ru"], &["ru"], None);
-		assert_best_match(&["ru!"], &["ru"], None);
-		assert_best_match(&["ruRU"], &["ru"], None);
+		case([" en"], ["en"], None);
+		case(["en\n"], ["en"], None);
+		case(["?ru"], ["ru"], None);
+		case(["ru!"], ["ru"], None);
+		case(["ruRU"], ["ru"], None);
 
 		// Repeating
-		assert_best_match(&["en", "en", "en", "en"], &["ru_RU", "ru", "en_US", "en"], Some("en"));
-		assert_best_match(&["en_US", "en_GB", "ru_UA", "fr_FR", "it"], &["kk", "ru", "pt", "ru"], Some("ru_UA"));
+		case(["en", "en", "en", "en"], ["ru_RU", "ru", "en_US", "en"], Some("en"));
+		case(["en_US", "en_GB", "ru_UA", "fr_FR", "it"], ["kk", "ru", "pt", "ru"], Some("ru_UA"));
 
 		// Littered
-		assert_best_match(&["!!!!!!", "qwydgn12i6i", "ЖЖяяЖяЬЬЬ", "en_US", "!*&^^&*", "qweqweqweqwe_qweqwe", "ru_RU", "@@", "@"], &["ru", "en"], Some("ru_RU"));
-		assert_best_match(&["", "", "", "zh", "", "", "", "", "", "he", "", ""], &["he", "", "", "zh"], Some("he"));
+		case(["!!!!!!", "qwydgn12i6i", "ЖЖяяЖяЬЬЬ", "en_US", "!*&^^&*", "qweqweqweqwe_qweqwe", "ru_RU", "@@", "@"], ["ru", "en"], Some("ru_RU"));
+		case(["", "", "", "zh", "", "", "", "", "", "he", "", ""], ["he", "", "", "zh"], Some("he"));
 
 		// Special characters
-		assert_best_match(&["sq\0", "ru_RU", "sq_AL", "eu_ES"], &["en_US", "en", "sq_XK", "sq"], Some("sq_AL"));
-		assert_best_match(&["\0", "\x01\x02\x03\x04", "sq\0", "ru_RU", "sq_AL", "eu_ES"], &["en_US", "\x06", "en", "sq_XK", "sq", "\0"], Some("sq_AL"));
+		case(["sq\0", "ru_RU", "sq_AL", "eu_ES"], ["en_US", "en", "sq_XK", "sq"], Some("sq_AL"));
+		case(["\0", "\x01\x02\x03\x04", "sq\0", "ru_RU", "sq_AL", "eu_ES"], &["en_US", "\x06", "en", "sq_XK", "sq", "\0"], Some("sq_AL"));
 
 		// Various letter cases
-		assert_best_match(&["EN"], &["en"], Some("EN"));
-		assert_best_match(&["En"], &["EN"], Some("En"));
-		assert_best_match(&["Ru_rU"], &["en", "ru"], Some("Ru_rU"));
-		assert_best_match(&["rU_rU"], &["en", "Ru"], Some("rU_rU"));
-		assert_best_match(&["EN.Utf-8"], &["en.UTF-8"], Some("EN.Utf-8"));
-		assert_best_match(&["En@dIcT"], &["EN_us"], Some("En@dIcT"));
-		assert_best_match(&["ru_ru.utf-8@icase"], &["en", "RU_RU.UTF-8@ICASE"], Some("ru_ru.utf-8@icase"));
-		assert_best_match(&["fr_FR.CP1252@euRO"], &["FR", "en"], Some("fr_FR.CP1252@euRO"));
+		case(["EN"], ["en"], Some("EN"));
+		case(["En"], ["EN"], Some("En"));
+		case(["Ru_rU"], ["en", "ru"], Some("Ru_rU"));
+		case(["rU_rU"], ["en", "Ru"], Some("rU_rU"));
+		case(["EN.Utf-8"], ["en.UTF-8"], Some("EN.Utf-8"));
+		case(["En@dIcT"], ["EN_us"], Some("En@dIcT"));
+		case(["ru_ru.utf-8@icase"], ["en", "RU_RU.UTF-8@ICASE"], Some("ru_ru.utf-8@icase"));
+		case(["fr_FR.CP1252@euRO"], ["FR", "en"], Some("fr_FR.CP1252@euRO"));
+
+		// Various template parameter types
+		// &str and &&str
+		case(["en_US", "ru_RU"], ["ru", "en"], Some("ru_RU"));
+		case(&["en_US", "ru_RU"], ["ru", "en"], Some(&"ru_RU"));
+		case(["en_US", "ru_RU"], &["ru", "en"], Some("ru_RU"));
+		case(&["en_US", "ru_RU"], &["ru", "en"], Some(&"ru_RU"));
+		case([&"en_US", &"ru_RU"], ["ru", "en"], Some(&"ru_RU"));
+		// String and &String
+		case(["en_US".to_string(), "ru_RU".to_string()], ["ru", "en"], Some("ru_RU".to_string()));
+		case(&["en_US".to_string(), "ru_RU".to_string()], ["ru", "en"], Some(&"ru_RU".to_string()));
+		// Cow
+		use std::borrow::Cow;
+		case([Cow::Owned("en_US".to_string()), Cow::Borrowed("ru_RU")], ["ru", "en"], Some(Cow::Borrowed("ru_RU")));
+		case([Cow::Borrowed("en_US"), Cow::Owned("ru_RU".to_string())], ["ru", "en"], Some(Cow::Owned("ru_RU".to_string())));
+		// Rc and Arc
+		use std::rc::Rc;
+		use std::sync::Arc;
+		case([Rc::from("en_US"), Rc::from("ru_RU")], ["ru", "en"], Some(Rc::from("ru_RU")));
+		case([Arc::from("en_US"), Arc::from("ru_RU")], ["ru", "en"], Some(Arc::from("ru_RU")));
+		// Box
+		case([Box::from("en_US"), Box::from("ru_RU")], ["ru", "en"], Some(Box::from("ru_RU")));
 	}
 
 	#[test]
 	#[allow(non_snake_case)]
 	fn test_PosixLocale() {
 
-		fn assert_parts(locale: &str, parts: (&str, Option<&str>, Option<&str>, Option<&str>)) {
+		fn case(locale: &str, parts: (&str, Option<&str>, Option<&str>, Option<&str>)) {
 			let posix_locale = PosixLocale::parse(locale);
 			assert_eq!(posix_locale.locale, locale);
 			assert_eq!(posix_locale.language(), parts.0);
@@ -282,94 +302,94 @@ mod tests {
 		}
 
 		// Language only
-		assert_parts("en", ("en", None, None, None));
-		assert_parts("ru", ("ru", None, None, None));
-		assert_parts("fr", ("fr", None, None, None));
+		case("en", ("en", None, None, None));
+		case("ru", ("ru", None, None, None));
+		case("fr", ("fr", None, None, None));
 
 		// Language and territory
-		assert_parts("en_US", ("en", Some("US"), None, None));
-		assert_parts("ru_RU", ("ru", Some("RU"), None, None));
-		assert_parts("fr_FR", ("fr", Some("FR"), None, None));
+		case("en_US", ("en", Some("US"), None, None));
+		case("ru_RU", ("ru", Some("RU"), None, None));
+		case("fr_FR", ("fr", Some("FR"), None, None));
 
 		// Language and codeset
-		assert_parts("en.UTF-8", ("en", None, Some("UTF-8"), None));
-		assert_parts("ru.KOI8-R", ("ru", None, Some("KOI8-R"), None));
-		assert_parts("fr.CP1252", ("fr", None, Some("CP1252"), None));
+		case("en.UTF-8", ("en", None, Some("UTF-8"), None));
+		case("ru.KOI8-R", ("ru", None, Some("KOI8-R"), None));
+		case("fr.CP1252", ("fr", None, Some("CP1252"), None));
 
 		// Language and modifier
-		assert_parts("en@dict", ("en", None, None, Some("dict")));
-		assert_parts("ru@icase", ("ru", None, None, Some("icase")));
-		assert_parts("fr@euro", ("fr", None, None, Some("euro")));
+		case("en@dict", ("en", None, None, Some("dict")));
+		case("ru@icase", ("ru", None, None, Some("icase")));
+		case("fr@euro", ("fr", None, None, Some("euro")));
 
 		// Language, territory and codeset
-		assert_parts("en_US.UTF-8", ("en", Some("US"), Some("UTF-8"), None));
-		assert_parts("ru_RU.KOI8-R", ("ru", Some("RU"), Some("KOI8-R"), None));
-		assert_parts("fr_FR.CP1252", ("fr", Some("FR"), Some("CP1252"), None));
+		case("en_US.UTF-8", ("en", Some("US"), Some("UTF-8"), None));
+		case("ru_RU.KOI8-R", ("ru", Some("RU"), Some("KOI8-R"), None));
+		case("fr_FR.CP1252", ("fr", Some("FR"), Some("CP1252"), None));
 
 		// Language, territory and modifier
-		assert_parts("en_US@dict", ("en", Some("US"), None, Some("dict")));
-		assert_parts("ru_RU@icase", ("ru", Some("RU"), None, Some("icase")));
-		assert_parts("fr_FR@euro", ("fr", Some("FR"), None, Some("euro")));
+		case("en_US@dict", ("en", Some("US"), None, Some("dict")));
+		case("ru_RU@icase", ("ru", Some("RU"), None, Some("icase")));
+		case("fr_FR@euro", ("fr", Some("FR"), None, Some("euro")));
 
 		// Language, codeset and modifier
-		assert_parts("en.UTF-8@dict", ("en", None, Some("UTF-8"), Some("dict")));
-		assert_parts("ru.KOI8-R@icase", ("ru", None, Some("KOI8-R"), Some("icase")));
-		assert_parts("fr.CP1252@euro", ("fr", None, Some("CP1252"), Some("euro")));
+		case("en.UTF-8@dict", ("en", None, Some("UTF-8"), Some("dict")));
+		case("ru.KOI8-R@icase", ("ru", None, Some("KOI8-R"), Some("icase")));
+		case("fr.CP1252@euro", ("fr", None, Some("CP1252"), Some("euro")));
 
 		// Language, territory, codeset and modifier
-		assert_parts("en_US.UTF-8@dict", ("en", Some("US"), Some("UTF-8"), Some("dict")));
-		assert_parts("ru_RU.KOI8-R@icase", ("ru", Some("RU"), Some("KOI8-R"), Some("icase")));
-		assert_parts("fr_FR.CP1252@euro", ("fr", Some("FR"), Some("CP1252"), Some("euro")));
+		case("en_US.UTF-8@dict", ("en", Some("US"), Some("UTF-8"), Some("dict")));
+		case("ru_RU.KOI8-R@icase", ("ru", Some("RU"), Some("KOI8-R"), Some("icase")));
+		case("fr_FR.CP1252@euro", ("fr", Some("FR"), Some("CP1252"), Some("euro")));
 
 		// Various letter cases
-		assert_parts("EN", ("EN", None, None, None));
-		assert_parts("Ru", ("Ru", None, None, None));
-		assert_parts("fR", ("fR", None, None, None));
-		assert_parts("eN_us.Utf-8", ("eN", Some("us"), Some("Utf-8"), None));
-		assert_parts("RU_ru.koi8-R", ("RU", Some("ru"), Some("koi8-R"), None));
-		assert_parts("Fr_Fr.Cp1252", ("Fr", Some("Fr"), Some("Cp1252"), None));
-		assert_parts("en_us.utf-8@DICT", ("en", Some("us"), Some("utf-8"), Some("DICT")));
-		assert_parts("RU_RU.KOI8-R@Icase", ("RU", Some("RU"), Some("KOI8-R"), Some("Icase")));
-		assert_parts("fR_fR.cP1252@eUrO", ("fR", Some("fR"), Some("cP1252"), Some("eUrO")));
+		case("EN", ("EN", None, None, None));
+		case("Ru", ("Ru", None, None, None));
+		case("fR", ("fR", None, None, None));
+		case("eN_us.Utf-8", ("eN", Some("us"), Some("Utf-8"), None));
+		case("RU_ru.koi8-R", ("RU", Some("ru"), Some("koi8-R"), None));
+		case("Fr_Fr.Cp1252", ("Fr", Some("Fr"), Some("Cp1252"), None));
+		case("en_us.utf-8@DICT", ("en", Some("us"), Some("utf-8"), Some("DICT")));
+		case("RU_RU.KOI8-R@Icase", ("RU", Some("RU"), Some("KOI8-R"), Some("Icase")));
+		case("fR_fR.cP1252@eUrO", ("fR", Some("fR"), Some("cP1252"), Some("eUrO")));
 
 		// Empty
-		assert_parts("", ("", None, None, None));
+		case("", ("", None, None, None));
 
 		// Whitespace
-		assert_parts(" ", (" ", None, None, None));
-		assert_parts("  ", ("  ", None, None, None));
-		assert_parts("\t", ("\t", None, None, None));
-		assert_parts("\n", ("\n", None, None, None));
-		assert_parts("\n  \t\t\n \n\t  \t\t\n\n\t", ("\n  \t\t\n \n\t  \t\t\n\n\t", None, None, None));
+		case(" ", (" ", None, None, None));
+		case("  ", ("  ", None, None, None));
+		case("\t", ("\t", None, None, None));
+		case("\n", ("\n", None, None, None));
+		case("\n  \t\t\n \n\t  \t\t\n\n\t", ("\n  \t\t\n \n\t  \t\t\n\n\t", None, None, None));
 
 		// Litter
-		assert_parts("!!!", ("!!!", None, None, None));
-		assert_parts("12345", ("12345", None, None, None));
-		assert_parts("+-+-", ("+-+-", None, None, None));
+		case("!!!", ("!!!", None, None, None));
+		case("12345", ("12345", None, None, None));
+		case("+-+-", ("+-+-", None, None, None));
 
 		// Malformed
-		assert_parts("!!!_9999.UUU@()()", ("!!!", Some("9999"), Some("UUU"), Some("()()")));
-		assert_parts("12_123.1234@12345", ("12", Some("123"), Some("1234"), Some("12345")));
-		assert_parts("+-+-@+-+-", ("+-+-", None, None, Some("+-+-")));
+		case("!!!_9999.UUU@()()", ("!!!", Some("9999"), Some("UUU"), Some("()()")));
+		case("12_123.1234@12345", ("12", Some("123"), Some("1234"), Some("12345")));
+		case("+-+-@+-+-", ("+-+-", None, None, Some("+-+-")));
 
 		// Wrong order EXPECTED TO BE BROKEN
-		assert_parts("lang.codeset_region@modifier", ("lang.codeset", None, Some("codeset_region"), Some("modifier")));
-		assert_parts("lang@modifier.codeset_region", ("lang@modifier.codeset", None, None, Some("modifier.codeset_region")));
-		assert_parts("lang_region@modifier.codeset", ("lang", Some("region@modifier"), None, Some("modifier.codeset")));
-		assert_parts("lang.codeset@modifier_region", ("lang.codeset@modifier", None, Some("codeset"), Some("modifier_region")));
-		assert_parts("lang@modifier_region.codeset", ("lang@modifier", Some("region"), None, Some("modifier_region.codeset")));
+		case("lang.codeset_region@modifier", ("lang.codeset", None, Some("codeset_region"), Some("modifier")));
+		case("lang@modifier.codeset_region", ("lang@modifier.codeset", None, None, Some("modifier.codeset_region")));
+		case("lang_region@modifier.codeset", ("lang", Some("region@modifier"), None, Some("modifier.codeset")));
+		case("lang.codeset@modifier_region", ("lang.codeset@modifier", None, Some("codeset"), Some("modifier_region")));
+		case("lang@modifier_region.codeset", ("lang@modifier", Some("region"), None, Some("modifier_region.codeset")));
 
 		// Parts missing
-		assert_parts("_.@", ("", Some(""), Some(""), Some("")));
-		assert_parts("_US.UTF-8@dict", ("", Some("US"), Some("UTF-8"), Some("dict")));
-		assert_parts("ru_.KOI8-R@icase", ("ru", Some(""), Some("KOI8-R"), Some("icase")));
-		assert_parts("fr_FR.@euro", ("fr", Some("FR"), Some(""), Some("euro")));
-		assert_parts("de_DE.ISO-8859-1@", ("de", Some("DE"), Some("ISO-8859-1"), Some("")));
+		case("_.@", ("", Some(""), Some(""), Some("")));
+		case("_US.UTF-8@dict", ("", Some("US"), Some("UTF-8"), Some("dict")));
+		case("ru_.KOI8-R@icase", ("ru", Some(""), Some("KOI8-R"), Some("icase")));
+		case("fr_FR.@euro", ("fr", Some("FR"), Some(""), Some("euro")));
+		case("de_DE.ISO-8859-1@", ("de", Some("DE"), Some("ISO-8859-1"), Some("")));
 
 		// Special characters
-		assert_parts("\0", ("\0", None, None, None));
-		assert_parts("\0_\0.\0@\0", ("\0", Some("\0"), Some("\0"), Some("\0")));
-		assert_parts("\0\x01\x02\x03", ("\0\x01\x02\x03", None, None, None));
-		assert_parts("\x03\x02\x01", ("\x03\x02\x01", None, None, None));
+		case("\0", ("\0", None, None, None));
+		case("\0_\0.\0@\0", ("\0", Some("\0"), Some("\0"), Some("\0")));
+		case("\0\x01\x02\x03", ("\0\x01\x02\x03", None, None, None));
+		case("\x03\x02\x01", ("\x03\x02\x01", None, None, None));
 	}
 }

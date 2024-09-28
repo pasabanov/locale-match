@@ -91,7 +91,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ## Copyright
 
-2024 Petr Alexandrovich Sabanov
+© 2024 Petr Alexandrovich Sabanov
 
 ## Metrics
 

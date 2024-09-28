@@ -14,31 +14,31 @@ A small library for selecting the best match for user's preferred locales from a
 use locale_match::bcp47::best_matching_locale;
 
 
-let available_locales = vec!["en-US", "en-GB", "ru-UA", "fr-FR", "it"];
-let user_locales = vec!["ru-RU", "ru", "en-US", "en"];
+let available_locales = ["en-US", "en-GB", "ru-UA", "fr-FR", "it"];
+let user_locales = ["ru-RU", "ru", "en-US", "en"];
 
-let best_match = best_matching_locale(available_locales.iter(), user_locales.iter());
+let best_match = best_matching_locale(available_locales, user_locales);
 
 // "ru-UA" is the best match for the highest-priority user locale "ru-RU"
-assert_eq!(best_match, Some("ru-UA".to_string()));
+assert_eq!(best_match, Some("ru-UA"));
 
 
-let available_locales = vec!["en", "pt-BR", "pt-PT", "es"];
-let user_locales = vec!["pt", "en"];
+let available_locales = ["en", "pt-BR", "pt-PT", "es"];
+let user_locales = ["pt", "en"];
 
-let best_match = best_matching_locale(available_locales.iter(), user_locales.iter());
+let best_match = best_matching_locale(available_locales, user_locales);
 
 // "pt-BR" is the first best match for the highest-priority user locale "pt"
-assert_eq!(best_match, Some("pt-BR".to_string()));
+assert_eq!(best_match, Some("pt-BR"));
 
 
-let available_locales = vec!["zh", "zh-cmn", "zh-cmn-Hans"];
-let user_locales = vec!["zh-Hans"];
+let available_locales = ["zh", "zh-cmn", "zh-cmn-Hans"];
+let user_locales = ["zh-Hans"];
 
-let best_match = best_matching_locale(available_locales.iter(), user_locales.iter());
+let best_match = best_matching_locale(available_locales, user_locales);
 
 // Empty extended language subtag in "zh-Hans" matches any extended language, e.g. "cmn"
-assert_eq!(best_match, Some("zh-cmn-Hans".to_string()));
+assert_eq!(best_match, Some("zh-cmn-Hans"));
 ```
 
 ### POSIX
@@ -47,28 +47,28 @@ assert_eq!(best_match, Some("zh-cmn-Hans".to_string()));
 use locale_match::posix::best_matching_locale;
 
 
-let available_locales = vec!["en_US", "en_GB", "ru_UA", "fr_FR", "it"];
-let user_locales = vec!["ru_RU", "ru", "en_US", "en"];
+let available_locales = ["en_US", "en_GB", "ru_UA", "fr_FR", "it"];
+let user_locales = ["ru_RU", "ru", "en_US", "en"];
 
-let best_match = best_matching_locale(available_locales.iter(), user_locales.iter());
+let best_match = best_matching_locale(available_locales, user_locales);
 
 // "ru_UA" is the best match for the highest-priority user locale "ru_RU"
 assert_eq!(best_match, Some("ru_UA"));
 
 
-let available_locales = vec!["en", "pt_BR", "pt_PT", "es"];
-let user_locales = vec!["pt", "en"];
+let available_locales = ["en", "pt_BR", "pt_PT", "es"];
+let user_locales = ["pt", "en"];
 
-let best_match = best_matching_locale(available_locales.iter(), user_locales.iter());
+let best_match = best_matching_locale(available_locales, user_locales);
 
 // "pt_BR" is the first best match for the highest-priority user locale "pt"
 assert_eq!(best_match, Some("pt_BR"));
 
 
-let available_locales = vec!["fr", "fr_FR", "fr_CA.UTF-8"];
-let user_locales = vec!["fr.UTF-8"];
+let available_locales = ["fr", "fr_FR", "fr_CA.UTF-8"];
+let user_locales = ["fr.UTF-8"];
 
-let best_match = best_matching_locale(available_locales.iter(), user_locales.iter());
+let best_match = best_matching_locale(available_locales, user_locales);
 
 // Empty territory in "fr.UTF-8" matches any territory, e.g. "CA"
 assert_eq!(best_match, Some("fr_CA.UTF-8"));

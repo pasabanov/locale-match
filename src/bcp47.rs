@@ -53,7 +53,7 @@ use language_tags::LanguageTag;
 /// If no match is found, [`None`] is returned.
 ///
 /// The returned locale is guaranteed to EXACTLY match one of the available locales.
-/// For example, `best_matching_locale(&["EN"].iter(), &["en"].iter())` will return `Some("EN")`.
+/// For example, `best_matching_locale(["EN"], ["en"])` will return `Some("EN")`.
 ///
 /// # Examples
 ///
@@ -61,48 +61,49 @@ use language_tags::LanguageTag;
 /// use locale_match::bcp47::best_matching_locale;
 ///
 ///
-/// let available_locales = vec!["en-US", "en-GB", "ru-UA", "fr-FR", "it"];
-/// let user_locales = vec!["ru-RU", "ru", "en-US", "en"];
+/// let available_locales = ["en-US", "en-GB", "ru-UA", "fr-FR", "it"];
+/// let user_locales = ["ru-RU", "ru", "en-US", "en"];
 ///
-/// let best_match = best_matching_locale(available_locales.iter(), user_locales.iter());
+/// let best_match = best_matching_locale(available_locales, user_locales);
 ///
 /// // "ru-UA" is the best match for the highest-priority user locale "ru-RU"
-/// assert_eq!(best_match, Some("ru-UA".to_string()));
+/// assert_eq!(best_match, Some("ru-UA"));
 ///
 ///
-/// let available_locales = vec!["en", "pt-BR", "pt-PT", "es"];
-/// let user_locales = vec!["pt", "en"];
+/// let available_locales = ["en", "pt-BR", "pt-PT", "es"];
+/// let user_locales = ["pt", "en"];
 ///
-/// let best_match = best_matching_locale(available_locales.iter(), user_locales.iter());
+/// let best_match = best_matching_locale(available_locales, user_locales);
 ///
 /// // "pt-BR" is the first best match for the highest-priority user locale "pt"
-/// assert_eq!(best_match, Some("pt-BR".to_string()));
+/// assert_eq!(best_match, Some("pt-BR"));
 ///
 ///
-/// let available_locales = vec!["zh", "zh-cmn", "zh-cmn-Hans"];
-/// let user_locales = vec!["zh-Hans"];
+/// let available_locales = ["zh", "zh-cmn", "zh-cmn-Hans"];
+/// let user_locales = ["zh-Hans"];
 ///
-/// let best_match = best_matching_locale(available_locales.iter(), user_locales.iter());
+/// let best_match = best_matching_locale(available_locales, user_locales);
 ///
 /// // Empty extended language subtag in "zh-Hans" matches any extended language, e.g. "cmn"
-/// assert_eq!(best_match, Some("zh-cmn-Hans".to_string()));
+/// assert_eq!(best_match, Some("zh-cmn-Hans"));
 /// ```
-pub fn best_matching_locale<T1, T2>(available_locales: impl Iterator<Item = T1>, user_locales: impl Iterator<Item = T2>) -> Option<String>
+pub fn best_matching_locale<T1, T2>(available_locales: impl IntoIterator<Item = T1>, user_locales: impl IntoIterator<Item = T2>) -> Option<T1>
 where
 	T1: AsRef<str>,
 	T2: AsRef<str>
 {
-	let available_tags = available_locales
+	let available_tags = available_locales.into_iter()
 		.filter_map(|l| LanguageTag::parse(l.as_ref()).ok().map(|tag| (l, tag)))
-		.collect::<Vec<(T1,LanguageTag)>>();
+		.collect::<Vec<(T1, LanguageTag)>>();
 
-	user_locales
+	user_locales.into_iter()
 		.filter_map(|locale| LanguageTag::parse(locale.as_ref()).ok())
 		.find_map(|user_tag|
 			available_tags.iter()
+				.enumerate()
 				.rev() // For max_by_key to return the first tag with max score
-				.filter(|(_, aval_tag)| aval_tag.primary_language() == user_tag.primary_language())
-				.max_by_key(|(_, aval_tag)| {
+				.filter(|(_, (_, aval_tag))| aval_tag.primary_language() == user_tag.primary_language())
+				.max_by_key(|(_, (_, aval_tag))| {
 					let mut score = 0;
 					for (aval, user, weight) in [
 						(aval_tag.extended_language(), user_tag.extended_language(), 32),
@@ -120,8 +121,9 @@ where
 					}
 					score
 				})
+				.map(|(i, _)| i)
 		)
-		.map(|(aval_locale, _)| aval_locale.as_ref().to_string())
+		.map(|i| available_tags.into_iter().nth(i).unwrap().0)
 }
 
 #[cfg(test)]
@@ -131,98 +133,124 @@ mod tests {
 	#[test]
 	fn test_best_matching_locale() {
 
-		fn assert_best_match(available_locales: &[&str], user_locales: &[&str], expected: Option<&str>) {
-			assert_eq!(best_matching_locale(available_locales.iter(), user_locales.iter()).as_deref(), expected);
+		fn case<T1, T2>(available_locales: impl IntoIterator<Item = T1>, user_locales: impl IntoIterator<Item = T2>, expected: Option<T1>)
+		where
+			T1: AsRef<str> + PartialEq + std::fmt::Debug,
+			T2: AsRef<str>
+		{
+			assert_eq!(best_matching_locale(available_locales, user_locales), expected);
 		}
 
 		// One best match
-		assert_best_match(&["en-US", "ru-RU"], &["ru", "en"], Some("ru-RU"));
-		assert_best_match(&["en-US", "ru-RU"], &["en", "ru"], Some("en-US"));
-		assert_best_match(&["en-US", "en-GB", "ru-UA", "fr-FR", "it"], &["ru-RU", "ru", "en-US", "en"], Some("ru-UA"));
-		assert_best_match(&["ru-RU", "sq-AL", "eu-ES"], &["en-US", "en", "sq-XK", "sq"], Some("sq-AL"));
-		assert_best_match(&["lv-LV", "ru-RU", "lt-LT", "mn-MN", "ku-TR"], &["fr", "fr-FR", "ml", "si", "id", "ku-IQ"], Some("ku-TR"));
-		assert_best_match(&["st-LS", "sn-ZW", "en-US"], &["zu-ZA", "st-ZA", "en"], Some("st-LS"));
+		case(["en-US", "ru-RU"], ["ru", "en"], Some("ru-RU"));
+		case(["en-US", "ru-RU"], ["en", "ru"], Some("en-US"));
+		case(["en-US", "en-GB", "ru-UA", "fr-FR", "it"], ["ru-RU", "ru", "en-US", "en"], Some("ru-UA"));
+		case(["ru-RU", "sq-AL", "eu-ES"], ["en-US", "en", "sq-XK", "sq"], Some("sq-AL"));
+		case(["lv-LV", "ru-RU", "lt-LT", "mn-MN", "ku-TR"], ["fr", "fr-FR", "ml", "si", "id", "ku-IQ"], Some("ku-TR"));
+		case(["st-LS", "sn-ZW", "en-US"], ["zu-ZA", "st-ZA", "en"], Some("st-LS"));
 
 		// Multiple best matches
-		assert_best_match(&["en-US", "en-GB", "ru-UA", "fr-FR", "it"], &["en-US", "en", "ru-RU", "ru"], Some("en-US"));
-		assert_best_match(&["en", "pt-BR", "pt-PT", "es"], &["pt", "en"], Some("pt-BR"));
-		assert_best_match(&["ku-TR", "ku-IQ", "ku-IR"], &["ku", "en"], Some("ku-TR"));
-		assert_best_match(&["en-US", "ru-RU", "mn-CN", "sn-ZW", "en", "ru", "mn-MN", "sn"], &["mn", "ru", "en", "sn"], Some("mn-CN"));
+		case(["en-US", "en-GB", "ru-UA", "fr-FR", "it"], ["en-US", "en", "ru-RU", "ru"], Some("en-US"));
+		case(["en", "pt-BR", "pt-PT", "es"], ["pt", "en"], Some("pt-BR"));
+		case(["ku-TR", "ku-IQ", "ku-IR"], ["ku", "en"], Some("ku-TR"));
+		case(["en-US", "ru-RU", "mn-CN", "sn-ZW", "en", "ru", "mn-MN", "sn"], ["mn", "ru", "en", "sn"], Some("mn-CN"));
 
 		// Identical
-		assert_best_match(&["en"], &["en"], Some("en"));
-		assert_best_match(&["en-US"], &["en-US"], Some("en-US"));
-		assert_best_match(&["en-US", "ru-RU"], &["en-US", "ru-RU"], Some("en-US"));
-		assert_best_match(&["st-LS", "sn-ZW", "en-US"], &["st-LS", "sn-ZW", "en-US"], Some("st-LS"));
-		assert_best_match(&["ku-TR", "ku-IQ", "ku-IR"], &["ku-TR", "ku-IQ", "ku-IR"], Some("ku-TR"));
-		assert_best_match(&["lv-LV", "ru-RU", "lt-LT", "mn-MN", "ku-TR"], &["lv-LV", "ru-RU", "lt-LT", "mn-MN", "ku-TR"], Some("lv-LV"));
+		case(["en"], ["en"], Some("en"));
+		case(["en-US"], ["en-US"], Some("en-US"));
+		case(["en-US", "ru-RU"], ["en-US", "ru-RU"], Some("en-US"));
+		case(["st-LS", "sn-ZW", "en-US"], ["st-LS", "sn-ZW", "en-US"], Some("st-LS"));
+		case(["ku-TR", "ku-IQ", "ku-IR"], ["ku-TR", "ku-IQ", "ku-IR"], Some("ku-TR"));
+		case(["lv-LV", "ru-RU", "lt-LT", "mn-MN", "ku-TR"], ["lv-LV", "ru-RU", "lt-LT", "mn-MN", "ku-TR"], Some("lv-LV"));
 
 		// One available locale
-		assert_best_match(&["kk"], &["en", "en-US", "fr-FR", "fr", "it", "pt", "ru-RU", "es-ES", "kk-KZ"], Some("kk"));
+		case(["kk"], ["en", "en-US", "fr-FR", "fr", "it", "pt", "ru-RU", "es-ES", "kk-KZ"], Some("kk"));
 
 		// One user locale
-		assert_best_match(&["en", "en-US", "fr-FR", "fr", "it", "pt", "ru-RU", "es-ES", "kk-KZ", "pt"], &["pt-PT"], Some("pt"));
+		case(["en", "en-US", "fr-FR", "fr", "it", "pt", "ru-RU", "es-ES", "kk-KZ", "pt"], ["pt-PT"], Some("pt"));
 
 		// Not found
-		assert_best_match(&["en", "en-US", "fr-FR", "fr", "it", "pt", "es-ES", "kk-KZ", "pt"], &["ru"], None);
-		assert_best_match(&["en", "en-US", "fr-FR", "fr", "pt"], &["id"], None);
-		assert_best_match(&["ru", "be", "uk", "kk"], &["en"], None);
+		case(["en", "en-US", "fr-FR", "fr", "it", "pt", "es-ES", "kk-KZ", "pt"], ["ru"], None);
+		case(["en", "en-US", "fr-FR", "fr", "pt"], ["id"], None);
+		case(["ru", "be", "uk", "kk"], ["en"], None);
 
 		// Empty available locales
-		assert_best_match(&[], &["en", "fr", "it", "pt"], None);
+		case(&[] as &[&str], &["en", "fr", "it", "pt"], None);
 
 		// Empty user locales
-		assert_best_match(&["en", "fr", "it", "pt"], &[], None);
+		case(["en", "fr", "it", "pt"], &[] as &[&str], None);
 
 		// Both lists empty
-		assert_best_match(&[], &[], None);
+		case(&[] as &[&str], &[] as &[&str], None);
 
 		// More subtags
-		assert_best_match(&["zh", "zh-cmn", "zh-cmn-Hans"], &["zh-cmn-SG"], Some("zh-cmn"));
-		assert_best_match(&["zh", "zh-cmn", "zh-cmn-Hans", "zh-cmn-Hans-SG"], &["zh-cmn-SG"], Some("zh-cmn-Hans-SG"));
-		assert_best_match(&["zh", "zh-cmn", "zh-cmn-Hans-SG"], &["zh-Hans"], Some("zh-cmn-Hans-SG"));
-		assert_best_match(&["zh", "zh-cmn", "zh-cmn-Hans", "zh-cmn-Hans-SG"], &["zh-Hans"], Some("zh-cmn-Hans"));
-		assert_best_match(&["zh", "zh-cmn", "zh-cmn-Hans", "zh-cmn-Hans-SG"], &["zh-SG"], Some("zh-cmn-Hans-SG"));
+		case(["zh", "zh-cmn", "zh-cmn-Hans"], ["zh-cmn-SG"], Some("zh-cmn"));
+		case(["zh", "zh-cmn", "zh-cmn-Hans", "zh-cmn-Hans-SG"], ["zh-cmn-SG"], Some("zh-cmn-Hans-SG"));
+		case(["zh", "zh-cmn", "zh-cmn-Hans-SG"], ["zh-Hans"], Some("zh-cmn-Hans-SG"));
+		case(["zh", "zh-cmn", "zh-cmn-Hans", "zh-cmn-Hans-SG"], ["zh-Hans"], Some("zh-cmn-Hans"));
+		case(["zh", "zh-cmn", "zh-cmn-Hans", "zh-cmn-Hans-SG"], ["zh-SG"], Some("zh-cmn-Hans-SG"));
 
 		// Extensions
-		assert_best_match(&["zh", "he"], &["he-IL-u-ca-hebrew-tz-jeruslm", "zh"], Some("he"));
-		assert_best_match(&["zh", "he-IL-u-ca-hebrew-tz-jeruslm-nu-latn"], &["he", "zh"], Some("he-IL-u-ca-hebrew-tz-jeruslm-nu-latn"));
-		assert_best_match(&["ar-u-nu-latn", "ar"], &["ar-u-no-latn", "ar", "en-US", "en"], Some("ar-u-nu-latn"));
-		assert_best_match(&["fr-FR-u-em-text", "gsw-u-em-emoji"], &["gsw-u-em-text"], Some("gsw-u-em-emoji"));
+		case(["zh", "he"], ["he-IL-u-ca-hebrew-tz-jeruslm", "zh"], Some("he"));
+		case(["zh", "he-IL-u-ca-hebrew-tz-jeruslm-nu-latn"], ["he", "zh"], Some("he-IL-u-ca-hebrew-tz-jeruslm-nu-latn"));
+		case(["ar-u-nu-latn", "ar"], ["ar-u-no-latn", "ar", "en-US", "en"], Some("ar-u-nu-latn"));
+		case(["fr-FR-u-em-text", "gsw-u-em-emoji"], ["gsw-u-em-text"], Some("gsw-u-em-emoji"));
 
 		// Malformed
-		assert_best_match(&["en-US-SUS-BUS-VUS-GUS"], &["en"], None);
-		assert_best_match(&["en-abcdefghijklmnopqrstuvwxyz"], &["en"], None);
-		assert_best_match(&["ru-ЖЖЯЯ"], &["ru"], None);
-		assert_best_match(&["ru--"], &["ru"], None);
-		assert_best_match(&[" en"], &["en"], None);
-		assert_best_match(&["", "@", "!!!", "721345"], &["en", "", "@", "!!!", "721345"], None);
+		case(["en-US-SUS-BUS-VUS-GUS"], ["en"], None);
+		case(["en-abcdefghijklmnopqrstuvwxyz"], ["en"], None);
+		case(["ru-ЖЖЯЯ"], ["ru"], None);
+		case(["ru--"], ["ru"], None);
+		case([" en"], ["en"], None);
+		case(["", "@", "!!!", "721345"], ["en", "", "@", "!!!", "721345"], None);
 
 		// Repeating
-		assert_best_match(&["en", "en", "en", "en"], &["ru-RU", "ru", "en-US", "en"], Some("en"));
-		assert_best_match(&["en-US", "en-GB", "ru-UA", "fr-FR", "it"], &["kk", "ru", "pt", "ru"], Some("ru-UA"));
+		case(["en", "en", "en", "en"], ["ru-RU", "ru", "en-US", "en"], Some("en"));
+		case(["en-US", "en-GB", "ru-UA", "fr-FR", "it"], ["kk", "ru", "pt", "ru"], Some("ru-UA"));
 
 		// Littered
-		assert_best_match(&["!!!!!!", "qwydgn12i6i", "ЖЖяяЖяЬЬЬ", "en-US", "!*&^^&*", "qweqweqweqwe-qweqwe", "ru-RU", "@@", "@"], &["ru", "en"], Some("ru-RU"));
-		assert_best_match(&["", "", "", "zh", "", "", "", "", "", "he", "", ""], &["he-IL-u-ca-hebrew-tz-jeruslm", "", "", "zh"], Some("he"));
-		assert_best_match(&["bla-!@#", "12345", "en-US", "en-GB", "ru-UA", "fr-FR", "it"], &["bla-!@#", "12345", "en-US", "en", "ru-RU", "ru"], Some("en-US"));
+		case(["!!!!!!", "qwydgn12i6i", "ЖЖяяЖяЬЬЬ", "en-US", "!*&^^&*", "qweqweqweqwe-qweqwe", "ru-RU", "@@", "@"], ["ru", "en"], Some("ru-RU"));
+		case(["", "", "", "zh", "", "", "", "", "", "he", "", ""], ["he-IL-u-ca-hebrew-tz-jeruslm", "", "", "zh"], Some("he"));
+		case(["bla-!@#", "12345", "en-US", "en-GB", "ru-UA", "fr-FR", "it"], ["bla-!@#", "12345", "en-US", "en", "ru-RU", "ru"], Some("en-US"));
 
 		// Special characters
-		assert_best_match(&["\0", "\x01", "\x02"], &["\0", "\x01", "\x02"], None);
-		assert_best_match(&["en\0"], &["en\0", "en-US", "en"], None);
-		assert_best_match(&["sq\0", "ru-RU", "sq-AL", "eu-ES"], &["en-US", "en", "sq-XK", "sq"], Some("sq-AL"));
-		assert_best_match(&["en-US", "ru-RU\x03"], &["ru", "en"], Some("en-US"));
-		assert_best_match(&["\0", "\x01\x02\x03\x04", "sq\0", "ru-RU", "sq-AL", "eu-ES"], &["en-US", "\x06", "en", "sq-XK", "sq", "\0"], Some("sq-AL"));
-		assert_best_match(&["en-US", "ru-RU\x03", "\x09\x09\x09\x09\x09", "\x0a\x09\x08\x07\x01\x00"], &["\x01", "\x02", "\x03", "\x04", "ru", "en"], Some("en-US"));
+		case(["\0", "\x01", "\x02"], ["\0", "\x01", "\x02"], None);
+		case(["en\0"], ["en\0", "en-US", "en"], None);
+		case(["sq\0", "ru-RU", "sq-AL", "eu-ES"], ["en-US", "en", "sq-XK", "sq"], Some("sq-AL"));
+		case(["en-US", "ru-RU\x03"], ["ru", "en"], Some("en-US"));
+		case(["\0", "\x01\x02\x03\x04", "sq\0", "ru-RU", "sq-AL", "eu-ES"], ["en-US", "\x06", "en", "sq-XK", "sq", "\0"], Some("sq-AL"));
+		case(["en-US", "ru-RU\x03", "\x09\x09\x09\x09\x09", "\x0a\x09\x08\x07\x01\x00"], ["\x01", "\x02", "\x03", "\x04", "ru", "en"], Some("en-US"));
 
 		// Various letter cases
-		assert_best_match(&["EN"], &["en"], Some("EN"));
-		assert_best_match(&["En"], &["EN"], Some("En"));
-		assert_best_match(&["Ru-rU"], &["en", "ru"], Some("Ru-rU"));
-		assert_best_match(&["rU-rU"], &["en", "Ru"], Some("rU-rU"));
-		assert_best_match(&["zh", "zh-cmn", "zH-cMn-hANS-Sg"], &["zh-Hans"], Some("zH-cMn-hANS-Sg"));
-		assert_best_match(&["zh", "zh-cmn", "zH-cMn-hANS-Sg"], &["ZH-HANS"], Some("zH-cMn-hANS-Sg"));
-		assert_best_match(&["zh", "he-IL-u-ca-HEBREW-tz-Jeruslm-nu-LaTn"], &["he", "zh"], Some("he-IL-u-ca-HEBREW-tz-Jeruslm-nu-LaTn"));
-		assert_best_match(&["zh", "HE-il-u-cA-HeBrEw-tz-Jeruslm-nu-LaTN"], &["he", "zh"], Some("HE-il-u-cA-HeBrEw-tz-Jeruslm-nu-LaTN"));
+		case(["EN"], ["en"], Some("EN"));
+		case(["En"], ["EN"], Some("En"));
+		case(["Ru-rU"], ["en", "ru"], Some("Ru-rU"));
+		case(["rU-rU"], ["en", "Ru"], Some("rU-rU"));
+		case(["zh", "zh-cmn", "zH-cMn-hANS-Sg"], ["zh-Hans"], Some("zH-cMn-hANS-Sg"));
+		case(["zh", "zh-cmn", "zH-cMn-hANS-Sg"], ["ZH-HANS"], Some("zH-cMn-hANS-Sg"));
+		case(["zh", "he-IL-u-ca-HEBREW-tz-Jeruslm-nu-LaTn"], ["he", "zh"], Some("he-IL-u-ca-HEBREW-tz-Jeruslm-nu-LaTn"));
+		case(["zh", "HE-il-u-cA-HeBrEw-tz-Jeruslm-nu-LaTN"], ["he", "zh"], Some("HE-il-u-cA-HeBrEw-tz-Jeruslm-nu-LaTN"));
+
+		// Various template parameter types
+		// &str and &&str
+		case(["en-US", "ru-RU"], ["ru", "en"], Some("ru-RU"));
+		case(&["en-US", "ru-RU"], ["ru", "en"], Some(&"ru-RU"));
+		case(["en-US", "ru-RU"], &["ru", "en"], Some("ru-RU"));
+		case(&["en-US", "ru-RU"], &["ru", "en"], Some(&"ru-RU"));
+		case([&"en-US", &"ru-RU"], ["ru", "en"], Some(&"ru-RU"));
+		// String and &String
+		case(["en-US".to_string(), "ru-RU".to_string()], ["ru", "en"], Some("ru-RU".to_string()));
+		case(&["en-US".to_string(), "ru-RU".to_string()], ["ru", "en"], Some(&"ru-RU".to_string()));
+		// Cow
+		use std::borrow::Cow;
+		case([Cow::Owned("en-US".to_string()), Cow::Borrowed("ru-RU")], ["ru", "en"], Some(Cow::Borrowed("ru-RU")));
+		case([Cow::Borrowed("en-US"), Cow::Owned("ru-RU".to_string())], ["ru", "en"], Some(Cow::Owned("ru-RU".to_string())));
+		// Rc and Arc
+		use std::rc::Rc;
+		use std::sync::Arc;
+		case([Rc::from("en-US"), Rc::from("ru-RU")], ["ru", "en"], Some(Rc::from("ru-RU")));
+		case([Arc::from("en-US"), Arc::from("ru-RU")], ["ru", "en"], Some(Arc::from("ru-RU")));
+		// Box
+		case([Box::from("en-US"), Box::from("ru-RU")], ["ru", "en"], Some(Box::from("ru-RU")));
 	}
 }

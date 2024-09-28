@@ -1,8 +1,8 @@
 # locale-match
 
-[![crates.io](https://img.shields.io/crates/v/locale-match?style=for-the-badge&logo=rust)](https://crates.io/crates/locale-match)
-[![crates.io](https://img.shields.io/docsrs/locale-match/latest?style=for-the-badge&logo=docs.rs&color=2DA44E)](https://docs.rs/locale-match/latest/locale_match)
-[![crates.io](https://img.shields.io/github/v/release/pasabanov/locale-match?style=for-the-badge&logo=github&color=8250DF)](https://github.com/pasabanov/locale-match/releases/latest)
+[![crates.io version](https://img.shields.io/crates/v/locale-match?style=for-the-badge&logo=rust)](https://crates.io/crates/locale-match)
+[![docs.rs documentation](https://img.shields.io/docsrs/locale-match/latest?style=for-the-badge&logo=docs.rs&color=2DA44E)](https://docs.rs/locale-match/latest/locale_match)
+[![GitHub latest release](https://img.shields.io/github/v/release/pasabanov/locale-match?style=for-the-badge&logo=github&color=8250DF)](https://github.com/pasabanov/locale-match/releases/latest)
 
 A small library for selecting the best match for user's preferred locales from available locales.
 

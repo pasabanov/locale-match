@@ -87,9 +87,9 @@ use language_tags::LanguageTag;
 /// // Empty extended language subtag in "zh-Hans" matches any extended language, e.g. "cmn"
 /// assert_eq!(best_match, Some("zh-cmn-Hans"));
 /// ```
-pub fn best_matching_locale<'a, 'b, T1, T2>(available_locales: impl IntoIterator<Item = &'a T1>, user_locales: impl IntoIterator<Item = &'b T2>) -> Option<&'a str>
+pub fn best_matching_locale<'a, 'b, T1, T2>(available_locales: impl IntoIterator<Item = &'a T1>, user_locales: impl IntoIterator<Item = &'b T2>) -> Option<T1>
 where
-	T1: AsRef<str> + 'a,
+	T1: AsRef<str> + 'a + Clone,
 	T2: AsRef<str> + 'b
 {
 	let available_tags = available_locales.into_iter()
@@ -121,7 +121,7 @@ where
 					score
 				})
 		)
-		.map(|&(aval_locale, _)| aval_locale.as_ref())
+		.map(|&(aval_locale, _)| aval_locale.clone())
 }
 
 #[cfg(test)]
@@ -224,5 +224,20 @@ mod tests {
 		assert_best_match(&["zh", "zh-cmn", "zH-cMn-hANS-Sg"], &["ZH-HANS"], Some("zH-cMn-hANS-Sg"));
 		assert_best_match(&["zh", "he-IL-u-ca-HEBREW-tz-Jeruslm-nu-LaTn"], &["he", "zh"], Some("he-IL-u-ca-HEBREW-tz-Jeruslm-nu-LaTn"));
 		assert_best_match(&["zh", "HE-il-u-cA-HeBrEw-tz-Jeruslm-nu-LaTN"], &["he", "zh"], Some("HE-il-u-cA-HeBrEw-tz-Jeruslm-nu-LaTN"));
+	}
+
+	#[test]
+	fn test_iter_types() {
+		let best = best_matching_locale(&["en-US", "ru-RU"], &["ru", "en"]);
+		assert_eq!(best, Some("ru-RU"));
+
+
+		let best = best_matching_locale(&["en-US".to_string(), "ru-RU".to_string()], &["ru", "en"]);
+		assert_eq!(best, Some("ru-RU".to_string()));
+
+		// Will not work
+		// let best = best_matching_locale(["en-US", "ru-RU"], ["ru", "en"]);
+		// let mut iter = ["en-US", "ru-RU"].into_iter();
+		// let best = best_matching_locale(iter.by_ref(), &["ru", "en"]);
 	}
 }

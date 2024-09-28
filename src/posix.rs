@@ -86,17 +86,17 @@
 /// // Empty territory in "fr.UTF-8" matches any territory, e.g. "CA"
 /// assert_eq!(best_match, Some("fr_CA.UTF-8"));
 /// ```
-pub fn best_matching_locale<'a, 'b, T1, T2>(available_locales: impl IntoIterator<Item = &'a T1>, user_locales: impl IntoIterator<Item = &'b T2>) -> Option<&'a str>
+pub fn best_matching_locale<'a, 'b, T1, T2>(available_locales: impl IntoIterator<Item = &'a T1>, user_locales: impl IntoIterator<Item = &'b T2>) -> Option<T1>
 where
-	T1: AsRef<str> + 'a,
+	T1: AsRef<str> + 'a + Clone,
 	T2: AsRef<str> + 'b
 {
 	let available_parsed_locales = available_locales.into_iter()
-		.map(|l| PosixLocale::parse(l.as_ref()))
-		.collect::<Vec<PosixLocale>>();
+		.map(|l| PosixLocale::parse(l))
+		.collect::<Vec<PosixLocale<T1>>>();
 
 	user_locales.into_iter()
-		.map(|locale| PosixLocale::parse(locale.as_ref()))
+		.map(|locale| PosixLocale::parse(locale))
 		.find_map(|user_locale|
 			available_parsed_locales.iter()
 				.rev() // For max_by_key to return the first locale with max score
@@ -116,19 +116,19 @@ where
 					score
 				})
 		)
-		.map(|aval_locale| aval_locale.locale)
+		.map(|aval_locale| aval_locale.locale.clone())
 }
 
 /// A POSIX locale as described in [The Open Group Base Specifications Issue 8 - 8. Environment Variables](https://pubs.opengroup.org/onlinepubs/9799919799/basedefs/V1_chap08.html).
-struct PosixLocale<'a> {
-	locale: &'a str,
+struct PosixLocale<'a, T: AsRef<str> + 'a + ?Sized> {
+	locale: &'a T,
 	language: &'a str,
 	territory: Option<&'a str>,
 	codeset: Option<&'a str>,
 	modifier: Option<&'a str>,
 }
 
-impl<'a> PosixLocale<'a> {
+impl<'a, T: AsRef<str> + 'a + ?Sized> PosixLocale<'a, T> {
 	const TERRITORY_DELIMITER: char = '_';
 	const CODESET_DELIMITER: char = '.';
 	const MODIFIER_DELIMITER: char = '@';
@@ -138,16 +138,17 @@ impl<'a> PosixLocale<'a> {
 	/// The `locale` string should be in the form `language[_territory][.codeset][@modifier]`.
 	///
 	/// The function does not perform any validation on the input string.
-	fn parse(locale: &'a str) -> Self {
-		let codeset_end = locale.find(Self::MODIFIER_DELIMITER).unwrap_or(locale.len());
-		let territory_end = locale.find(Self::CODESET_DELIMITER).unwrap_or(codeset_end);
-		let language_end = locale.find(Self::TERRITORY_DELIMITER).unwrap_or(territory_end);
+	fn parse(locale: &'a T) -> Self {
+		let locale_ref = locale.as_ref();
+		let codeset_end = locale_ref.find(Self::MODIFIER_DELIMITER).unwrap_or(locale_ref.len());
+		let territory_end = locale_ref.find(Self::CODESET_DELIMITER).unwrap_or(codeset_end);
+		let language_end = locale_ref.find(Self::TERRITORY_DELIMITER).unwrap_or(territory_end);
 		Self {
 			locale,
-			language: &locale[..language_end],
-			territory: locale.get(language_end + 1..territory_end),
-			codeset: locale.get(territory_end + 1..codeset_end),
-			modifier: locale.get(codeset_end + 1..)
+			language: &locale_ref[..language_end],
+			territory: locale_ref.get(language_end + 1..territory_end),
+			codeset: locale_ref.get(territory_end + 1..codeset_end),
+			modifier: locale_ref.get(codeset_end + 1..)
 		}
 	}
 }

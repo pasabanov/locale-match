@@ -1,58 +1,60 @@
-//! locale-match is a small library for matching user's preferred locales to available locales.  
-//! Copyright (C) © 2024  Petr Alexandrovich Sabanov
-//!
-//! This program is free software: you can redistribute it and/or modify
-//! it under the terms of the GNU Lesser General Public License as published by
-//! the Free Software Foundation, either version 3 of the License, or
-//! (at your option) any later version.
-//!
-//! This program is distributed in the hope that it will be useful,
-//! but WITHOUT ANY WARRANTY; without even the implied warranty of
-//! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-//! GNU Lesser General Public License for more details.
-//!
-//! You should have received a copy of the GNU Lesser General Public License
-//! along with this program.  If not, see <https://www.gnu.org/licenses/>.
+// locale-match is a small library for matching user's preferred locales to available locales.
+// Copyright (C) © 2024  Petr Alexandrovich Sabanov
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use language_tags::LanguageTag;
 
-/// Finds the best matching locale from a list of available locales based on a list of user locales.
-/// The function ignores any locales that are not valid BCP 47 locales.
+/// Finds the best matching locale from a list of available locales based on a list of user locales.  
+/// The function ignores any locales that are not valid BCP 47 locales according to
+/// [Network Working Group - Tags for Identifying Languages](https://www.ietf.org/rfc/bcp/bcp47.html).
 ///
-/// The function compares user locales to available locales to find the best match.
+/// The function compares user locales to available locales to find the best match.  
 /// For each user locale, it iterates through the available locales and, for those with a matching
 /// primary language, calculates a score based on how closely each available locale matches the user
-/// locale.
+/// locale.  
 /// The score calculation gives higher priority to matching more significant parts of the locale
-/// (i.e., earlier segments in the locale string).
+/// (i.e., earlier segments in the locale string).  
 /// If a subtag is empty, it is considered to match equally well with any subtag from the same
 /// category.
 ///
 /// If multiple available locales have the same score, the function selects the one that appears
-/// earlier in the list of available locales.
+/// earlier in the list of available locales.  
 /// If no available locale matches the primary language of a user locale, the function moves to the
-/// next user locale in the list.
+/// next user locale in the list.  
 /// If no matches are found for any user locale, the function returns [`None`].
 ///
 /// Malformed locales are ignored.
 ///
 /// # Arguments
 ///
-/// * `available_locales` - An iterator over locale strings representing the available locales.
+/// * `available_locales` - An iterator over locale strings representing the available locales.  
 ///   These locales should be ordered by priority, meaning that a locale appearing earlier in this
 ///   list is considered more preferable for the program.
 /// * `user_locales` - An iterator over locale strings representing the user locales to match
-///   against. These locales should also be ordered by priority, meaning that a locale appearing
+///   against.  
+///   These locales should also be ordered by priority, meaning that a locale appearing
 ///   earlier in this list is considered more desirable for the user.
 ///
 /// # Returns
 ///
-/// Returns an [`Option<String>`] containing the string representation of the best matching locale.
+/// Returns an [`Option<String>`] containing the string representation of the best matching locale.  
 /// If multiple available locales match the same user locale with equal score, the one that appears
-/// earlier in the list of available locales is chosen.
+/// earlier in the list of available locales is chosen.  
 /// If no match is found, [`None`] is returned.
 ///
-/// The returned locale is guaranteed to EXACTLY match one of the available locales.
+/// The returned locale is guaranteed to EXACTLY match one of the available locales.  
 /// For example, `best_matching_locale(["EN"], ["en"])` will return `Some("EN")`.
 ///
 /// # Examples

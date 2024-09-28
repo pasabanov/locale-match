@@ -1,7 +1,7 @@
 [package]
 name = "locale-match"
 version = "0.1.1"
-authors = ["Petr Alexandrovich Sabanov pasabanov@murena.io"]
+authors = ["Petr Alexandrovich Sabanov <pasabanov@murena.io>"]
 edition = "2021"
 description = "A small library for selecting the best match for user's preferred locales from available locales."
 repository = "https://github.com/pasabanov/locale-match"

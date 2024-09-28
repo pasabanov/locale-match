@@ -14,6 +14,8 @@
 //! You should have received a copy of the GNU Lesser General Public License
 //! along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::ops::{Range, RangeFrom};
+
 /// Finds the best matching locale from a list of available locales based on a list of user locales.
 /// The function expects locales to be valid POSIX locales, but does not validate them.
 /// The function expects locales to be encoded with ASCII.
@@ -63,7 +65,7 @@
 /// let available_locales = ["en_US", "en_GB", "ru_UA", "fr_FR", "it"];
 /// let user_locales = ["ru_RU", "ru", "en_US", "en"];
 ///
-/// let best_match = best_matching_locale(&available_locales, &user_locales);
+/// let best_match = best_matching_locale(available_locales, user_locales);
 ///
 /// // "ru_UA" is the best match for the highest-priority user locale "ru_RU"
 /// assert_eq!(best_match, Some("ru_UA"));
@@ -72,7 +74,7 @@
 /// let available_locales = ["en", "pt_BR", "pt_PT", "es"];
 /// let user_locales = ["pt", "en"];
 ///
-/// let best_match = best_matching_locale(&available_locales, &user_locales);
+/// let best_match = best_matching_locale(available_locales, user_locales);
 ///
 /// // "pt_BR" is the first best match for the highest-priority user locale "pt"
 /// assert_eq!(best_match, Some("pt_BR"));
@@ -81,15 +83,15 @@
 /// let available_locales = ["fr", "fr_FR", "fr_CA.UTF-8"];
 /// let user_locales = ["fr.UTF-8"];
 ///
-/// let best_match = best_matching_locale(&available_locales, &user_locales);
+/// let best_match = best_matching_locale(available_locales, user_locales);
 ///
 /// // Empty territory in "fr.UTF-8" matches any territory, e.g. "CA"
 /// assert_eq!(best_match, Some("fr_CA.UTF-8"));
 /// ```
-pub fn best_matching_locale<'a, 'b, T1, T2>(available_locales: impl IntoIterator<Item = &'a T1>, user_locales: impl IntoIterator<Item = &'b T2>) -> Option<T1>
+pub fn best_matching_locale<'a, T1, T2>(available_locales: impl IntoIterator<Item = T1>, user_locales: impl IntoIterator<Item = T2>) -> Option<T1>
 where
-	T1: AsRef<str> + 'a + Clone,
-	T2: AsRef<str> + 'b
+	T1: AsRef<str> + 'a,
+	T2: AsRef<str>
 {
 	let available_parsed_locales = available_locales.into_iter()
 		.map(|l| PosixLocale::parse(l))
@@ -99,14 +101,15 @@ where
 		.map(|locale| PosixLocale::parse(locale))
 		.find_map(|user_locale|
 			available_parsed_locales.iter()
+				.enumerate()
 				.rev() // For max_by_key to return the first locale with max score
-				.filter(|aval_locale| aval_locale.language.eq_ignore_ascii_case(user_locale.language))
-				.max_by_key(|aval_locale| {
+				.filter(|(_, aval_locale)| aval_locale.language().eq_ignore_ascii_case(user_locale.language()))
+				.max_by_key(|(_, aval_locale)| {
 					let mut score = 0;
 					for (aval, user, weight) in [
-						(aval_locale.territory, user_locale.territory, 4),
-						(aval_locale.codeset,   user_locale.codeset,   2),
-						(aval_locale.modifier,  user_locale.modifier,  1),
+						(aval_locale.territory(), user_locale.territory(), 4),
+						(aval_locale.codeset(),   user_locale.codeset(),   2),
+						(aval_locale.modifier(),  user_locale.modifier(),  1),
 					] {
 						match (aval, user) {
 							(Some(a), Some(u)) if a.eq_ignore_ascii_case(u) => score += weight,
@@ -115,20 +118,21 @@ where
 					}
 					score
 				})
+				.map(|(i, _)| i)
 		)
-		.map(|aval_locale| aval_locale.locale.clone())
+		.map(|i| available_parsed_locales.into_iter().nth(i).unwrap().into_inner())
 }
 
 /// A POSIX locale as described in [The Open Group Base Specifications Issue 8 - 8. Environment Variables](https://pubs.opengroup.org/onlinepubs/9799919799/basedefs/V1_chap08.html).
-struct PosixLocale<'a, T: AsRef<str> + 'a + ?Sized> {
-	locale: &'a T,
-	language: &'a str,
-	territory: Option<&'a str>,
-	codeset: Option<&'a str>,
-	modifier: Option<&'a str>,
+struct PosixLocale<T: AsRef<str>> {
+	locale: T,
+	language: Range<usize>,
+	territory: Option<Range<usize>>,
+	codeset: Option<Range<usize>>,
+	modifier: Option<RangeFrom<usize>>,
 }
 
-impl<'a, T: AsRef<str> + 'a + ?Sized> PosixLocale<'a, T> {
+impl<T: AsRef<str>> PosixLocale<T> {
 	const TERRITORY_DELIMITER: char = '_';
 	const CODESET_DELIMITER: char = '.';
 	const MODIFIER_DELIMITER: char = '@';
@@ -138,18 +142,35 @@ impl<'a, T: AsRef<str> + 'a + ?Sized> PosixLocale<'a, T> {
 	/// The `locale` string should be in the form `language[_territory][.codeset][@modifier]`.
 	///
 	/// The function does not perform any validation on the input string.
-	fn parse(locale: &'a T) -> Self {
+	fn parse(locale: T) -> Self {
 		let locale_ref = locale.as_ref();
 		let codeset_end = locale_ref.find(Self::MODIFIER_DELIMITER).unwrap_or(locale_ref.len());
 		let territory_end = locale_ref.find(Self::CODESET_DELIMITER).unwrap_or(codeset_end);
 		let language_end = locale_ref.find(Self::TERRITORY_DELIMITER).unwrap_or(territory_end);
 		Self {
 			locale,
-			language: &locale_ref[..language_end],
-			territory: locale_ref.get(language_end + 1..territory_end),
-			codeset: locale_ref.get(territory_end + 1..codeset_end),
-			modifier: locale_ref.get(codeset_end + 1..)
+			language: 0..language_end,
+			territory: Some(language_end + 1..territory_end),
+			codeset: Some(territory_end + 1..codeset_end),
+			modifier: Some(codeset_end + 1..)
 		}
+	}
+
+	fn language(&self) -> &str {
+		&self.locale.as_ref()[self.language.clone()]
+	}
+
+	fn territory(&self) -> Option<&str> {
+		self.locale.as_ref().get(self.territory.clone().unwrap())
+	}
+	fn codeset(&self) -> Option<&str> {
+		self.locale.as_ref().get(self.codeset.clone().unwrap())
+	}
+	fn modifier(&self) -> Option<&str> {
+		self.locale.as_ref().get(self.modifier.clone().unwrap())
+	}
+	fn into_inner(self) -> T {
+		self.locale
 	}
 }
 
@@ -161,7 +182,7 @@ mod tests {
 	fn test_best_matching_locale() {
 
 		fn assert_best_match(available_locales: &[&str], user_locales: &[&str], expected: Option<&str>) {
-			assert_eq!(best_matching_locale(available_locales, user_locales), expected);
+			assert_eq!(best_matching_locale(available_locales, user_locales), expected.as_ref());
 		}
 
 		// One best match
@@ -254,10 +275,10 @@ mod tests {
 		fn assert_parts(locale: &str, parts: (&str, Option<&str>, Option<&str>, Option<&str>)) {
 			let posix_locale = PosixLocale::parse(locale);
 			assert_eq!(posix_locale.locale, locale);
-			assert_eq!(posix_locale.language, parts.0);
-			assert_eq!(posix_locale.territory, parts.1);
-			assert_eq!(posix_locale.codeset, parts.2);
-			assert_eq!(posix_locale.modifier, parts.3);
+			assert_eq!(posix_locale.language(), parts.0);
+			assert_eq!(posix_locale.territory(), parts.1);
+			assert_eq!(posix_locale.codeset(), parts.2);
+			assert_eq!(posix_locale.modifier(), parts.3);
 		}
 
 		// Language only

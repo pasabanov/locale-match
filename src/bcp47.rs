@@ -64,7 +64,7 @@ use language_tags::LanguageTag;
 /// let available_locales = ["en-US", "en-GB", "ru-UA", "fr-FR", "it"];
 /// let user_locales = ["ru-RU", "ru", "en-US", "en"];
 ///
-/// let best_match = best_matching_locale(&available_locales, &user_locales);
+/// let best_match = best_matching_locale(available_locales, user_locales);
 ///
 /// // "ru-UA" is the best match for the highest-priority user locale "ru-RU"
 /// assert_eq!(best_match, Some("ru-UA"));
@@ -73,7 +73,7 @@ use language_tags::LanguageTag;
 /// let available_locales = ["en", "pt-BR", "pt-PT", "es"];
 /// let user_locales = ["pt", "en"];
 ///
-/// let best_match = best_matching_locale(&available_locales, &user_locales);
+/// let best_match = best_matching_locale(available_locales, user_locales);
 ///
 /// // "pt-BR" is the first best match for the highest-priority user locale "pt"
 /// assert_eq!(best_match, Some("pt-BR"));
@@ -82,27 +82,28 @@ use language_tags::LanguageTag;
 /// let available_locales = ["zh", "zh-cmn", "zh-cmn-Hans"];
 /// let user_locales = ["zh-Hans"];
 ///
-/// let best_match = best_matching_locale(&available_locales, &user_locales);
+/// let best_match = best_matching_locale(available_locales, user_locales);
 ///
 /// // Empty extended language subtag in "zh-Hans" matches any extended language, e.g. "cmn"
 /// assert_eq!(best_match, Some("zh-cmn-Hans"));
 /// ```
-pub fn best_matching_locale<'a, 'b, T1, T2>(available_locales: impl IntoIterator<Item = &'a T1>, user_locales: impl IntoIterator<Item = &'b T2>) -> Option<T1>
+pub fn best_matching_locale<'a, T1, T2>(available_locales: impl IntoIterator<Item = T1>, user_locales: impl IntoIterator<Item = T2>) -> Option<T1>
 where
-	T1: AsRef<str> + 'a + Clone,
-	T2: AsRef<str> + 'b
+	T1: AsRef<str> + 'a,
+	T2: AsRef<str>
 {
 	let available_tags = available_locales.into_iter()
 		.filter_map(|l| LanguageTag::parse(l.as_ref()).ok().map(|tag| (l, tag)))
-		.collect::<Vec<(&T1, LanguageTag)>>();
+		.collect::<Vec<(T1, LanguageTag)>>();
 
 	user_locales.into_iter()
 		.filter_map(|locale| LanguageTag::parse(locale.as_ref()).ok())
 		.find_map(|user_tag|
 			available_tags.iter()
+				.enumerate()
 				.rev() // For max_by_key to return the first tag with max score
-				.filter(|(_, aval_tag)| aval_tag.primary_language() == user_tag.primary_language())
-				.max_by_key(|(_, aval_tag)| {
+				.filter(|(_, (_, aval_tag))| aval_tag.primary_language() == user_tag.primary_language())
+				.max_by_key(|(_, (_, aval_tag))| {
 					let mut score = 0;
 					for (aval, user, weight) in [
 						(aval_tag.extended_language(), user_tag.extended_language(), 32),
@@ -120,8 +121,9 @@ where
 					}
 					score
 				})
+				.map(|(i, _)| i)
 		)
-		.map(|&(aval_locale, _)| aval_locale.clone())
+		.map(|i| available_tags.into_iter().nth(i).unwrap().0)
 }
 
 #[cfg(test)]
@@ -132,7 +134,7 @@ mod tests {
 	fn test_best_matching_locale() {
 
 		fn assert_best_match(available_locales: &[&str], user_locales: &[&str], expected: Option<&str>) {
-			assert_eq!(best_matching_locale(available_locales, user_locales), expected);
+			assert_eq!(best_matching_locale(available_locales, user_locales), expected.as_ref());
 		}
 
 		// One best match
@@ -228,16 +230,17 @@ mod tests {
 
 	#[test]
 	fn test_iter_types() {
-		let best = best_matching_locale(&["en-US", "ru-RU"], &["ru", "en"]);
+		let best = best_matching_locale(&["en-US", "ru-RU"], ["ru", "en"]);
+		assert_eq!(best, Some(&"ru-RU"));
+
+		let available = ["en-US".to_string(), "ru-RU".to_string()];
+		let best = best_matching_locale(&available, ["ru", "en"]);
+		assert_eq!(best, Some(&"ru-RU".to_string()));
+
+		let best = best_matching_locale(["en-US", "ru-RU"], ["ru", "en"]);
 		assert_eq!(best, Some("ru-RU"));
 
-
-		let best = best_matching_locale(&["en-US".to_string(), "ru-RU".to_string()], &["ru", "en"]);
+		let best = best_matching_locale(["en-US".to_string(), "ru-RU".to_string()], ["ru", "en"]);
 		assert_eq!(best, Some("ru-RU".to_string()));
-
-		// Will not work
-		// let best = best_matching_locale(["en-US", "ru-RU"], ["ru", "en"]);
-		// let mut iter = ["en-US", "ru-RU"].into_iter();
-		// let best = best_matching_locale(iter.by_ref(), &["ru", "en"]);
 	}
 }

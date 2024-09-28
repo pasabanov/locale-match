@@ -6,6 +6,12 @@
 
 A small library for selecting the best match for user's preferred locales from available locales.
 
+The library consists of two modules:
+* `bcp47` - for matching locales in the [BCP 47](https://www.ietf.org/rfc/bcp/bcp47.html) format
+* `posix` - for matching locales in the [POSIX](https://pubs.opengroup.org/onlinepubs/9799919799/basedefs/V1_chap08.html) format
+
+Both modules provide the `best_matching_locale` function.
+
 ## Examples
 
 ### BCP 47

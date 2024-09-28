@@ -53,7 +53,7 @@ use language_tags::LanguageTag;
 /// If no match is found, [`None`] is returned.
 ///
 /// The returned locale is guaranteed to EXACTLY match one of the available locales.
-/// For example, `best_matching_locale(&["EN"], &["en"])` will return `Some("EN")`.
+/// For example, `best_matching_locale(["EN"], ["en"])` will return `Some("EN")`.
 ///
 /// # Examples
 ///

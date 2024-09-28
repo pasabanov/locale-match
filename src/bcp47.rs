@@ -1,4 +1,4 @@
-//! locale-match is a small library for matching locales.
+//! locale-match is a small library for matching user's preferred locales to available locales.  
 //! Copyright (C) © 2024  Petr Alexandrovich Sabanov
 //!
 //! This program is free software: you can redistribute it and/or modify

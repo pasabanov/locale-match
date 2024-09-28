@@ -53,7 +53,7 @@ use language_tags::LanguageTag;
 /// If no match is found, [`None`] is returned.
 ///
 /// The returned locale is guaranteed to EXACTLY match one of the available locales.
-/// For example, `best_matching_locale(&["EN"].iter(), &["en"].iter())` will return `Some("EN")`.
+/// For example, `best_matching_locale(&["EN"], &["en"])` will return `Some("EN")`.
 ///
 /// # Examples
 ///
@@ -61,42 +61,42 @@ use language_tags::LanguageTag;
 /// use locale_match::bcp47::best_matching_locale;
 ///
 ///
-/// let available_locales = vec!["en-US", "en-GB", "ru-UA", "fr-FR", "it"];
-/// let user_locales = vec!["ru-RU", "ru", "en-US", "en"];
+/// let available_locales = ["en-US", "en-GB", "ru-UA", "fr-FR", "it"];
+/// let user_locales = ["ru-RU", "ru", "en-US", "en"];
 ///
-/// let best_match = best_matching_locale(available_locales.iter(), user_locales.iter());
+/// let best_match = best_matching_locale(&available_locales, &user_locales);
 ///
 /// // "ru-UA" is the best match for the highest-priority user locale "ru-RU"
-/// assert_eq!(best_match, Some("ru-UA".to_string()));
+/// assert_eq!(best_match, Some("ru-UA"));
 ///
 ///
-/// let available_locales = vec!["en", "pt-BR", "pt-PT", "es"];
-/// let user_locales = vec!["pt", "en"];
+/// let available_locales = ["en", "pt-BR", "pt-PT", "es"];
+/// let user_locales = ["pt", "en"];
 ///
-/// let best_match = best_matching_locale(available_locales.iter(), user_locales.iter());
+/// let best_match = best_matching_locale(&available_locales, &user_locales);
 ///
 /// // "pt-BR" is the first best match for the highest-priority user locale "pt"
-/// assert_eq!(best_match, Some("pt-BR".to_string()));
+/// assert_eq!(best_match, Some("pt-BR"));
 ///
 ///
-/// let available_locales = vec!["zh", "zh-cmn", "zh-cmn-Hans"];
-/// let user_locales = vec!["zh-Hans"];
+/// let available_locales = ["zh", "zh-cmn", "zh-cmn-Hans"];
+/// let user_locales = ["zh-Hans"];
 ///
-/// let best_match = best_matching_locale(available_locales.iter(), user_locales.iter());
+/// let best_match = best_matching_locale(&available_locales, &user_locales);
 ///
 /// // Empty extended language subtag in "zh-Hans" matches any extended language, e.g. "cmn"
-/// assert_eq!(best_match, Some("zh-cmn-Hans".to_string()));
+/// assert_eq!(best_match, Some("zh-cmn-Hans"));
 /// ```
-pub fn best_matching_locale<T1, T2>(available_locales: impl Iterator<Item = T1>, user_locales: impl Iterator<Item = T2>) -> Option<String>
+pub fn best_matching_locale<'a, 'b, T1, T2>(available_locales: impl IntoIterator<Item = &'a T1>, user_locales: impl IntoIterator<Item = &'b T2>) -> Option<&'a str>
 where
-	T1: AsRef<str>,
-	T2: AsRef<str>
+	T1: AsRef<str> + 'a,
+	T2: AsRef<str> + 'b
 {
-	let available_tags = available_locales
+	let available_tags = available_locales.into_iter()
 		.filter_map(|l| LanguageTag::parse(l.as_ref()).ok().map(|tag| (l, tag)))
-		.collect::<Vec<(T1,LanguageTag)>>();
+		.collect::<Vec<(&T1, LanguageTag)>>();
 
-	user_locales
+	user_locales.into_iter()
 		.filter_map(|locale| LanguageTag::parse(locale.as_ref()).ok())
 		.find_map(|user_tag|
 			available_tags.iter()
@@ -121,7 +121,7 @@ where
 					score
 				})
 		)
-		.map(|(aval_locale, _)| aval_locale.as_ref().to_string())
+		.map(|&(aval_locale, _)| aval_locale.as_ref())
 }
 
 #[cfg(test)]
@@ -132,7 +132,7 @@ mod tests {
 	fn test_best_matching_locale() {
 
 		fn assert_best_match(available_locales: &[&str], user_locales: &[&str], expected: Option<&str>) {
-			assert_eq!(best_matching_locale(available_locales.iter(), user_locales.iter()).as_deref(), expected);
+			assert_eq!(best_matching_locale(available_locales, user_locales), expected);
 		}
 
 		// One best match

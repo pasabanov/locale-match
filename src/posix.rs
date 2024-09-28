@@ -52,7 +52,7 @@
 /// If no match is found, [`None`] is returned.
 ///
 /// The returned locale is guaranteed to EXACTLY match one of the available locales.
-/// For example, `best_matching_locale(&["EN"].iter(), &["en"].iter())` will return `Some("EN")`.
+/// For example, `best_matching_locale(&["EN"], &["en"])` will return `Some("EN")`.
 ///
 /// # Examples
 ///
@@ -60,42 +60,42 @@
 /// use locale_match::posix::best_matching_locale;
 ///
 ///
-/// let available_locales = vec!["en_US", "en_GB", "ru_UA", "fr_FR", "it"];
-/// let user_locales = vec!["ru_RU", "ru", "en_US", "en"];
+/// let available_locales = ["en_US", "en_GB", "ru_UA", "fr_FR", "it"];
+/// let user_locales = ["ru_RU", "ru", "en_US", "en"];
 ///
-/// let best_match = best_matching_locale(available_locales.iter(), user_locales.iter());
+/// let best_match = best_matching_locale(&available_locales, &user_locales);
 ///
 /// // "ru_UA" is the best match for the highest-priority user locale "ru_RU"
 /// assert_eq!(best_match, Some("ru_UA"));
 ///
 ///
-/// let available_locales = vec!["en", "pt_BR", "pt_PT", "es"];
-/// let user_locales = vec!["pt", "en"];
+/// let available_locales = ["en", "pt_BR", "pt_PT", "es"];
+/// let user_locales = ["pt", "en"];
 ///
-/// let best_match = best_matching_locale(available_locales.iter(), user_locales.iter());
+/// let best_match = best_matching_locale(&available_locales, &user_locales);
 ///
 /// // "pt_BR" is the first best match for the highest-priority user locale "pt"
 /// assert_eq!(best_match, Some("pt_BR"));
 ///
 ///
-/// let available_locales = vec!["fr", "fr_FR", "fr_CA.UTF-8"];
-/// let user_locales = vec!["fr.UTF-8"];
+/// let available_locales = ["fr", "fr_FR", "fr_CA.UTF-8"];
+/// let user_locales = ["fr.UTF-8"];
 ///
-/// let best_match = best_matching_locale(available_locales.iter(), user_locales.iter());
+/// let best_match = best_matching_locale(&available_locales, &user_locales);
 ///
 /// // Empty territory in "fr.UTF-8" matches any territory, e.g. "CA"
 /// assert_eq!(best_match, Some("fr_CA.UTF-8"));
 /// ```
-pub fn best_matching_locale<'a, 'b, T1, T2>(available_locales: impl Iterator<Item = &'a T1>, user_locales: impl Iterator<Item = &'b T2>) -> Option<&'a str>
+pub fn best_matching_locale<'a, 'b, T1, T2>(available_locales: impl IntoIterator<Item = &'a T1>, user_locales: impl IntoIterator<Item = &'b T2>) -> Option<&'a str>
 where
 	T1: AsRef<str> + 'a,
 	T2: AsRef<str> + 'b
 {
-	let available_parsed_locales = available_locales
+	let available_parsed_locales = available_locales.into_iter()
 		.map(|l| PosixLocale::parse(l.as_ref()))
 		.collect::<Vec<PosixLocale>>();
 
-	user_locales
+	user_locales.into_iter()
 		.map(|locale| PosixLocale::parse(locale.as_ref()))
 		.find_map(|user_locale|
 			available_parsed_locales.iter()
@@ -160,7 +160,7 @@ mod tests {
 	fn test_best_matching_locale() {
 
 		fn assert_best_match(available_locales: &[&str], user_locales: &[&str], expected: Option<&str>) {
-			assert_eq!(best_matching_locale(available_locales.iter(), user_locales.iter()).as_deref(), expected);
+			assert_eq!(best_matching_locale(available_locales, user_locales), expected);
 		}
 
 		// One best match

@@ -6,6 +6,8 @@ edition = "2021"
 description = "A small library for selecting the best match for user's preferred locales from available locales."
 repository = "https://github.com/pasabanov/locale-match"
 license = "LGPL-3.0-or-later"
+keywords = ["locale", "i18n", "internationalization", "l10n", "localization"]
+categories = ["internationalization", "localization"]
 
 exclude = [
 	"/.forgejo/",

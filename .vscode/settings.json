@@ -1,0 +1,36 @@
+{
+	// Warning!
+	// Some of these settings only take effect if added to the user's `settings.json`
+	// and will not work in the workspace `settings.json`.
+	// It is recommended to copy the privacy-related settings into your user's `settings.json`.
+
+	// PRIVACY
+	// Telemetry
+	"telemetry.enableCrashReporter": false,
+	"telemetry.enableTelemetry": false,
+	"telemetry.telemetryLevel": "off",
+	"editor.experimental.treeSitterTelemetry": false,
+	"autotools.telemetry": false,
+	"dotnetAcquisitionExtension.enableTelemetry": false,
+	"julia.enableTelemetry": false,
+	"matlab.telemetry": false,
+	"redhat.telemetry.enabled": false,
+	// Experiments
+	"workbench.enableExperiments": false,
+	"jupyter.experiments.enabled": false,
+	"python.experiments.enabled": false,
+	// Other
+	"workbench.remoteIndicator.showExtensionRecommendations": false,
+	"extensions.autoUpdate": false,
+	"extensions.ignoreRecommendations": true,
+	"yaml.extension.recommendations": false,
+
+	// CODE STYLE
+	// Indentation
+	"editor.detectIndentation": true,
+	"editor.indentSize": "tabSize",
+	"editor.insertSpaces": false,
+	// Final new line
+	"files.insertFinalNewline": false,
+	"files.trimFinalNewlines": true,
+}

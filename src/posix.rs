@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+//! A module for matching locales in the [POSIX](https://pubs.opengroup.org/onlinepubs/9799919799/basedefs/V1_chap08.html) format.
+
 /// Finds the best matching locale from a list of available locales based on a list of user locales.  
 /// The function expects locales to be valid POSIX locales according to
 /// [The Open Group Base Specifications Issue 8 - 8. Environment Variables](https://pubs.opengroup.org/onlinepubs/9799919799/basedefs/V1_chap08.html),

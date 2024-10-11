@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+//! A module for matching locales in the [BCP 47](https://www.ietf.org/rfc/bcp/bcp47.html) format.
+
 use language_tags::LanguageTag;
 
 /// Finds the best matching locale from a list of available locales based on a list of user locales.  

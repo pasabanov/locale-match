@@ -245,6 +245,8 @@ mod tests {
 		case(["?ru"], ["ru"], None);
 		case(["ru!"], ["ru"], None);
 		case(["ruRU"], ["ru"], None);
+		case(["es:ES"], ["es"], None);
+		case(["fr-FR"], ["fr"], None);
 
 		// Repeating
 		case(["en", "en", "en", "en"], ["ru_RU", "ru", "en_US", "en"], Some("en"));
@@ -302,6 +304,7 @@ mod tests {
 			assert_eq!(posix_locale.territory(), parts.1);
 			assert_eq!(posix_locale.codeset(), parts.2);
 			assert_eq!(posix_locale.modifier(), parts.3);
+			assert_eq!(posix_locale.into_inner(), locale);
 		}
 
 		// Language only
@@ -369,6 +372,7 @@ mod tests {
 		case("!!!", ("!!!", None, None, None));
 		case("12345", ("12345", None, None, None));
 		case("+-+-", ("+-+-", None, None, None));
+		case("q1w2e3", ("q1w2e3", None, None, None));
 
 		// Malformed
 		case("!!!_9999.UUU@()()", ("!!!", Some("9999"), Some("UUU"), Some("()()")));

@@ -34,6 +34,8 @@
 	"editor.detectIndentation": true,
 	"editor.indentSize": "tabSize",
 	"editor.insertSpaces": false,
+	// New lines
+	"files.eol": "\n",
 	// Final new line
 	"files.insertFinalNewline": false,
 	"files.trimFinalNewlines": true,

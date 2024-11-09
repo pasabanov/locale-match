@@ -7,6 +7,7 @@
         <option name="SMART_TABS" value="true" />
       </value>
     </option>
+    <option name="LINE_SEPARATOR" value="&#10;" />
     <codeStyleSettings language="Bibtex">
       <indentOptions>
         <option name="USE_TAB_CHARACTER" value="true" />

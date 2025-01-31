@@ -12,6 +12,21 @@ The library consists of two modules:
 
 Both modules provide the `best_matching_locale` function.
 
+### Usage
+
+To use `locale-match` in your project, add it to your `Cargo.toml`:
+
+```toml
+# Both modules are included by default.
+locale-match = "x.y.z"
+
+# Include only the `bcp47` module.
+locale-match = { version = "x.y.z", default-features = false, features = ["bcp47"] }
+
+# Include only the `posix` module.
+locale-match = { version = "x.y.z", default-features = false, features = ["posix"] }
+```
+
 ## Examples
 
 ### BCP 47

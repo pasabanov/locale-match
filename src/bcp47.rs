@@ -1,5 +1,5 @@
 // locale-match is a small library for matching user's preferred locales to available locales.
-// Copyright (C) © 2024  Petr Alexandrovich Sabanov
+// Copyright (C) © 2024  Petr Aleksandrovich Sabanov
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by

@@ -49,7 +49,7 @@ lto = false
 debug = true
 strip = "none"
 
-[profile.fastcompile]
+[profile.fastbuild]
 inherits = "dev"
 # Compilation
 codegen-units = 8192

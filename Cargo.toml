@@ -22,9 +22,11 @@ exclude = [
 	"/test/",
 	"/tests/",
 	"/.editorconfig",
+	"/.gitattributes",
 	"/.gitignore",
+	"/.gitmodules",
 	"/.rustfmt.toml",
-	"/rustfmt.toml"
+	"/rustfmt.toml",
 ]
 
 [dependencies]

@@ -2,7 +2,7 @@
 name = "locale-match"
 version = "0.2.3"
 authors = ["Petr Aleksandrovich Sabanov <pasabanov@murena.io>"]
-edition = "2021"
+edition = "2024"
 description = "A small library for selecting the best match for user's preferred locales from available locales."
 repository = "https://github.com/pasabanov/locale-match"
 license = "LGPL-3.0-or-later"
